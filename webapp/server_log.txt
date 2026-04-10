@@ -1,0 +1,5 @@
+==========================================
+CAMS Backend Bridge está activo
+Puerto local: http://localhost:3001
+Acceso desde red: http://DESKTOP-EG80M56:3001
+==========================================

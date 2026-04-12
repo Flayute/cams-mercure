@@ -1,31 +1,36 @@
 import os
 import re
+import json
 from llm_client import LLMClient
 
+# Ruta base portable — usa variable de entorno o ~/Documents/CAMS-Mercure
+CAMS_BASE = os.environ.get('CAMS_BASE_PATH', os.path.join(os.path.expanduser('~'), 'Documents', 'CAMS-Mercure'))
+WIKI_INDEX = os.path.join(CAMS_BASE, 'wiki-index.json')
+RESPONSE_PATH = os.path.join(CAMS_BASE, 'respuestas', 'RESPONSE.md')
+
+# Asegurar que la carpeta de respuestas existe
+os.makedirs(os.path.join(CAMS_BASE, 'respuestas'), exist_ok=True)
+
 class FederatedQueryEngine:
-    def __init__(self, master_wiki_path="/home/aorsi/Obsidian/RAG/AGENTS.md", 
-                 response_path="/home/aorsi/Obsidian/RAG/RESPONSE.md",
+    def __init__(self,
+                 wiki_index_path=None,
+                 response_path=None,
                  llm_url="http://localhost:8081/v1",
-                 model="qwen2.5-coder-7b-instruct"):
-        self.master_wiki_path = master_wiki_path
-        self.response_path = response_path
+                 model="local-model"):
+        self.wiki_index_path = wiki_index_path or WIKI_INDEX
+        self.response_path = response_path or RESPONSE_PATH
         self.llm = LLMClient(base_url=llm_url, model=model)
 
     def get_vaults_from_master(self):
-        """Parsea AGENTS.md buscando rutas de vaults en la tabla."""
-        if not os.path.exists(self.master_wiki_path):
+        """Lee wiki-index.json para obtener las carpetas indexadas por el usuario."""
+        if not os.path.exists(self.wiki_index_path):
             return []
-            
-        vault_paths = []
-        with open(self.master_wiki_path, "r", encoding="utf-8") as f:
-            for line in f:
-                if "|" in line and "/home/aorsi/Obsidian" in line:
-                    parts = line.split("|")
-                    if len(parts) >= 3:
-                        path = parts[2].strip()
-                        if os.path.isdir(path):
-                            vault_paths.append(path)
-        return vault_paths
+        try:
+            with open(self.wiki_index_path, 'r', encoding='utf-8') as f:
+                index = json.load(f)
+            return [entry['path'] for entry in index.get('folders', []) if os.path.isdir(entry['path'])]
+        except Exception:
+            return []
 
     def query(self, user_query, session_mode=False, save_to_file=True, output_filename="RESPONSE.md"):
         vault_paths = self.get_vaults_from_master()
@@ -38,13 +43,14 @@ class FederatedQueryEngine:
                     all_context.append(f.read())
         
         full_context_str = "\n".join(all_context)
-        
         system_prompt = (
-            "Eres el 'Bibliotecario' del sistema CAMS Neuro-Engram.\n"
-            "Tu especialidad es la psicología somática y el marco teórico 'Entrando al Yo'.\n\n"
-            "INSTRUCCIONES DE SALIDA:\n"
-            "1. Provee razonamiento comprimido <thought_ultra>.\n"
-            "2. Respuesta empática y técnica en <therapeutic_output>.\n"
+            "Eres el Bibliotecario del sistema CAMS Mercure y un Intérprete Caveman (Decodificador de Engramas).\n"
+            "El CONTEXTO WIKI proporcionado es un índice comprimido en lenguaje troglodita (hechos puros, tokens minimizados).\n\n"
+            "INSTRUCCIONES:\n"
+            "1. Inspecciona el contexto Caveman buscando hechos relacionados con la consulta.\n"
+            "2. Decodifica e interpreta esa información: reconstruye la gramática y el flujo lógico.\n"
+            "3. Redacta una respuesta natural, empática y detallada, expandiendo los conceptos clave sin inventar datos.\n"
+            "4. Si no hay contexto relevante, indícalo brevemente y razona desde tu conocimiento base.\n"
         )
         
         if session_mode:

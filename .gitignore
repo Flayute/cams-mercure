@@ -1,0 +1,36 @@
+# Dependencias
+node_modules/
+venv/
+__pycache__/
+*.pyc
+
+# Build
+dist/
+build/
+
+# Modelos (archivos muy pesados, no subirlos)
+*.gguf
+*.bin
+*.safetensors
+models/
+
+# Configuración local personal
+nodes.json
+
+# Logs y datos de sesión
+*.log
+agoras/
+respuestas/
+
+# Entorno
+.env
+.env.local
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Sistema
+.DS_Store
+Thumbs.db

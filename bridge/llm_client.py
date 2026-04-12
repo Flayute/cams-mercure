@@ -11,12 +11,22 @@ class LLMClient:
         self.base_url = base_url
         self.model = model
 
-    def chat(self, system_prompt, user_prompt, temperature=0.1):
+    def chat(self, system_prompt, user_prompt, images=None, temperature=0.1):
+        content = [{"type": "text", "text": user_prompt}]
+        
+        if images:
+            for img in images:
+                # El formato esperado es "data:image/jpeg;base64,..."
+                content.append({
+                    "type": "image_url",
+                    "image_url": {"url": img}
+                })
+
         payload = {
             "model": self.model,
             "messages": [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
+                {"role": "user", "content": content}
             ],
             "temperature": temperature
         }

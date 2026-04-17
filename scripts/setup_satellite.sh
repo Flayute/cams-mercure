@@ -38,10 +38,10 @@ fi
 mkdir -p ~/cams-node/models
 
 # 3. Descarga de modelo (Qwen 2.5 1.5B)
-MODEL_URL="https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+MODEL_URL="https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q5_K_S.gguf"
 if [ ! -f ~/cams-node/models/student.gguf ]; then
-    echo "[CAMS] Descargando modelo de estudiante (1.5B)..."
-    curl -L $MODEL_URL -o ~/cams-node/models/student.gguf
+    echo "[CAMS] Descargando modelo de estudiante (e2b)..."
+    curl -L $MODEL_URL -o ~/cams-node/models/student_2b.gguf
 fi
 
 # 4. Generación del Script de Lanzamiento
@@ -51,7 +51,8 @@ $( [ "$IS_TERMUX" = true ] && echo "termux-wake-lock" )
 echo "🚀 Lanzando Nodo Satélite CAMS en puerto 8080..."
 # Optimizamos hilos según dispositivo
 THREADS=$( [ "$IS_TERMUX" = true ] && echo "6" || echo "4" )
-$BINARY_PATH -m ~/cams-node/models/student.gguf --host 0.0.0.0 --port 8080 --ctx-size 12288 --threads \$THREADS
+$BINARY_PATH -m ~/cams-node/models/student.gguf \
+  --host 0.0.0.0 --port 8080 --ctx-size 12288 --threads $THREADS --batch-size 512 --ubatch-size 512    --cache-type-k q8_0   --cache-type-v q8_0 --mlock --flash-attn --no-mmap \$THREADS
 EOF
 
 chmod +x ~/cams-node/start_node.sh

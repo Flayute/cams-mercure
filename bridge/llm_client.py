@@ -12,11 +12,11 @@ class LLMClient:
         self.model = model
 
     def chat(self, system_prompt, user_prompt, images=None, temperature=0.1):
+        import time
         content = [{"type": "text", "text": user_prompt}]
         
         if images:
             for img in images:
-                # El formato esperado es "data:image/jpeg;base64,..."
                 content.append({
                     "type": "image_url",
                     "image_url": {"url": img}
@@ -31,12 +31,24 @@ class LLMClient:
             "temperature": temperature
         }
         
+        start_time = time.time()
         try:
-            response = requests.post(f"{self.base_url}/chat/completions", json=payload)
+            response = requests.post(f"{self.base_url}/chat/completions", json=payload, timeout=300)
             response.raise_for_status()
-            return response.json()['choices'][0]['message']['content']
+            res_json = response.json()
+            duration = time.time() - start_time
+            
+            return {
+                "content": res_json['choices'][0]['message']['content'],
+                "usage": res_json.get('usage', {}),
+                "duration": duration
+            }
         except Exception as e:
-            return f"Error llamando al LLM: {str(e)}"
+            return {
+                "content": f"Error llamando al LLM: {str(e)}",
+                "usage": {},
+                "duration": 0
+            }
 
     def compress_ultra(self, note_content):
         """

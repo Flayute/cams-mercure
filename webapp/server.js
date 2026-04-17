@@ -11,6 +11,32 @@ import { notifyAllStudents, notifyDevice } from './notifications.js';
 const app = express();
 const PORT = 3001;
 
+// Utilidad para abrir selector de carpetas nativo (Linux)
+const pickDirectory = () => {
+    return new Promise((resolve) => {
+        // Intentar zenity primero, luego kdialog
+        exec('zenity --file-selection --directory --title="Seleccionar Carpeta para Mercure"', (err, stdout) => {
+            if (!err && stdout) return resolve(stdout.trim());
+            exec('kdialog --getexistingdirectory .', (err2, stdout2) => {
+                if (!err2 && stdout2) return resolve(stdout2.trim());
+                resolve(null);
+            });
+        });
+    });
+};
+
+const pickFile = () => {
+    return new Promise((resolve) => {
+        exec('zenity --file-selection --title="Seleccionar Archivo para Mercure" --file-filter="*.md *.txt *.docx *.pdf"', (err, stdout) => {
+            if (!err && stdout) return resolve(stdout.trim());
+            exec('kdialog --getopenfilename .', (err2, stdout2) => {
+                if (!err2 && stdout2) return resolve(stdout2.trim());
+                resolve(null);
+            });
+        });
+    });
+};
+
 // Cargar configuración de nodos (v3)
 const nodesConfig = JSON.parse(fs.readFileSync(path.join(path.resolve(), 'nodes.json'), 'utf8'));
 // Configuración de Rutas (CAMS Mercure)
@@ -22,12 +48,17 @@ const ATTACH_PATH = path.join(BASE_PATH, 'recursos');
 const SAVED_RESP_PATH = path.join(BASE_PATH, 'respuestas');
 const BACKUP_PATH = path.join(BASE_PATH, 'backups'); // Backup silencioso por modo
 const WIKI_INDEX_PATH = path.join(BASE_PATH, 'wiki-index.json'); // Carpetas escaneadas
+const BENCHMARKS_PATH = path.join(BACKUP_PATH, 'benchmarks.json');
 const CAMS_BRIDGE_URL = 'http://localhost:8000';
+const MERCURE_TOKEN = process.env.MERCURE_TOKEN || "cambiame-por-token-seguro";
 
 // Asegurar que las carpetas base existen al arrancar
 [AGORA_LOGS_PATH, ATTACH_PATH, SAVED_RESP_PATH, BACKUP_PATH].forEach(p => {
     if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
 });
+
+// Registro de controladores de aborto para peticiones activas
+const activeAbortControllers = new Map();
 
 const TOPICS = [
     "Actualidad científica y avances en IA",
@@ -82,7 +113,11 @@ cron.schedule('0 */4 * * *', async () => {
         });
         
         const question = questResp.data.choices[0].message.content;
-        const answer = await axios.post(CAMS_BRIDGE_URL, { query: question, agent: "bibliotecario" });
+        const answer = await axios.post(CAMS_BRIDGE_URL + "/query", { 
+            query: question, 
+            agent: "bibliotecario",
+            token: MERCURE_TOKEN
+        });
         
         const log = `### Destilación: ${student.name}\n**Pregunta:** ${question}\n**Respuesta Maestro:** ${answer.data.response}\n\n`;
         fs.appendFileSync(path.join(BLOG_PATH, '03-aprendizaje-federado/distilacion.md'), log);
@@ -109,6 +144,75 @@ app.post('/api/agora/save-note', (req, res) => {
         res.json({ status: "success", path: targetPath });
     } catch (e) {
         res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/system/pick-directory', async (req, res) => {
+    console.log("[Sistema] Solicitando selección de directorio nativo...");
+    const selectedPath = await pickDirectory();
+    if (selectedPath) {
+        res.json({ path: selectedPath });
+    } else {
+        res.status(400).json({ error: "Selección cancelada o fallida" });
+    }
+});
+
+app.get('/api/system/pick-file', async (req, res) => {
+    console.log("[Sistema] Solicitando selección de archivo nativo...");
+    const selectedPath = await pickFile();
+    if (selectedPath) {
+        res.json({ path: selectedPath });
+    } else {
+        res.status(400).json({ error: "Selección cancelada o fallida" });
+    }
+});
+
+app.post('/api/wiki/add-file', (req, res) => {
+    const { filePath } = req.body;
+    if (!filePath) return res.status(400).json({ error: "Ruta de archivo no proporcionada" });
+
+    try {
+        let index = { folders: [], files: [] };
+        if (fs.existsSync(WIKI_INDEX_PATH)) {
+            index = JSON.parse(fs.readFileSync(WIKI_INDEX_PATH, 'utf8'));
+        }
+        if (!index.files) index.files = [];
+        
+        // Evitar duplicados
+        index.files = index.files.filter(f => f.path !== filePath);
+        index.files.push({
+            path: filePath,
+            scanned: new Date().toISOString()
+        });
+        
+        fs.writeFileSync(WIKI_INDEX_PATH, JSON.stringify(index, null, 2));
+        console.log(`[Wiki] Archivo añadido manualmente: ${filePath}`);
+        res.json({ status: "success", file: filePath });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/benchmarks', (req, res) => {
+    try {
+        if (!fs.existsSync(BENCHMARKS_PATH)) return res.json([]);
+        const data = fs.readFileSync(BENCHMARKS_PATH, 'utf8');
+        res.json(JSON.parse(data));
+    } catch (e) {
+        res.json([]);
+    }
+});
+
+app.post('/api/agent/cancel', (req, res) => {
+    const { sessionId } = req.body;
+    const controller = activeAbortControllers.get(sessionId || 'default');
+    if (controller) {
+        controller.abort();
+        activeAbortControllers.delete(sessionId || 'default');
+        console.log(`[Agente] Petición cancelada: ${sessionId || 'default'}`);
+        res.json({ status: "cancelled" });
+    } else {
+        res.status(404).json({ error: "No hay peticiones activas para cancelar." });
     }
 });
 
@@ -142,7 +246,8 @@ async function startAgora(topic, cycles = 1) {
         
         const masterPromise = axios.post(CAMS_BRIDGE_URL + "/query", {
             query: `Razona sobre este tema con tu contexto completo (Obsidian + Web): ${topic}. Sé directo y denso.`,
-            agent: "explorador"
+            agent: "explorador",
+            token: MERCURE_TOKEN
         }, { timeout: 600000 }).then(r => r.data.response);
 
         const nodePromises = activeNodes.map(node =>
@@ -172,7 +277,8 @@ async function startAgora(topic, cycles = 1) {
         
         const masterSynthResp = await axios.post(CAMS_BRIDGE_URL + "/query", {
             query: `Eres el Maestro del Ágora. Los alumnos han razonado:\n${allNodeReasoning}\n\nTu propio razonamiento: ${masterReasoning}\n\nEmite una DIRECCIÓN MAESTRA: el punto clave a profundizar. Sé conciso.`,
-            agent: "debate"
+            agent: "debate",
+            token: MERCURE_TOKEN
         }, { timeout: 600000 });
         
         let masterDirection = masterSynthResp.data.response;
@@ -181,7 +287,8 @@ async function startAgora(topic, cycles = 1) {
         // ── FASE 3: BUCLE DE REFINAMIENTO (N CICLOS) ───────────────
         // Encode para los satélites
         const encodedDirection = await axios.post(CAMS_BRIDGE_URL + "/caveman/encode", { 
-            query: masterDirection 
+            query: masterDirection,
+            token: MERCURE_TOKEN
         }, { timeout: 600000 });
         let cavemanDirection = encodedDirection.data.response;
         
@@ -210,12 +317,16 @@ async function startAgora(topic, cycles = 1) {
             if (cycleResults.length > 0 && cycle < cycles) {
                 const reSynthResp = await axios.post(CAMS_BRIDGE_URL + "/query", {
                     query: `Los alumnos respondieron en el ciclo ${cycle}:\n${cycleResults.join("\n")}\n\nEmite una nueva DIRECCIÓN MAESTRA más refinada para el ciclo ${cycle + 1}.`,
-                    agent: "debate"
+                    agent: "debate",
+                    token: MERCURE_TOKEN
                 }, { timeout: 600000 });
                 masterDirection = reSynthResp.data.response;
                 transcript += `**↳ Nueva Dirección (Maestro):** ${masterDirection}\n\n`;
                 
-                const rEncoded = await axios.post(CAMS_BRIDGE_URL + "/caveman/encode", { query: masterDirection }, { timeout: 600000 });
+                const rEncoded = await axios.post(CAMS_BRIDGE_URL + "/caveman/encode", { 
+                    query: masterDirection,
+                    token: MERCURE_TOKEN
+                }, { timeout: 600000 });
                 cavemanDirection = rEncoded.data.response;
             }
         }
@@ -225,7 +336,8 @@ async function startAgora(topic, cycles = 1) {
         const fullDebateContext = transcript.substring(0, 4000); // Limitar contexto
         const finalSynthResp = await axios.post(CAMS_BRIDGE_URL + "/query", {
             query: `Eres el Maestro del Ágora. Sin prejuicios sobre el origen de las ideas, genera una CONCLUSIÓN FINAL del debate:\n\n${fullDebateContext}\n\nSíntesis empática, rigurosa y legible:`,
-            agent: "debate"
+            agent: "debate",
+            token: MERCURE_TOKEN
         }, { timeout: 600000 });
         
         transcript += `\n---\n## 🏛️ Conclusión Final del Maestro\n${finalSynthResp.data.response}\n`;
@@ -312,7 +424,7 @@ const isPortActive = (port) => {
 };
 
 app.get('/api/services/status', async (req, res) => {
-    const llmActive = await isPortActive(8081);
+    const llmActive = await isPortActive(8080);
     const bridgeActive = await isPortActive(8000);
     res.json({
         llm: llmActive ? "running" : "stopped",
@@ -338,7 +450,7 @@ app.post('/api/services/start', async (req, res) => {
     try {
         console.log("[Orquestador] Limpiando procesos previos...");
         try {
-            execSync("fuser -k 8081/tcp 8000/tcp 2>/dev/null");
+            execSync("fuser -k 8080/tcp 8000/tcp 2>/dev/null");
         } catch (e) {
             // fuser devuelve error si no encuentra procesos, es normal
         }
@@ -350,7 +462,7 @@ app.post('/api/services/start', async (req, res) => {
         serviceLogs.bridge = [];
 
         const llmPath = model.engine === "turboquant" ? "/home/aorsi/llama-cpp-turboquant" : "/home/aorsi/llama-cpp-official";
-        const llmArgs = ["-m", model.path, "-fa", "on", "-ngl", "99", "-c", model.context.toString(), "--host", "0.0.0.0", "--port", "8081"];
+        const llmArgs = ["-m", model.path, "-fa", "on", "-ngl", "99", "-c", model.context.toString(), "--host", "0.0.0.0", "--port", "8080"];
         
         // Re-introducidas flags de speculative decoding para motor TurboQuant
         if (model.engine === "turboquant") {
@@ -386,7 +498,7 @@ app.post('/api/services/start', async (req, res) => {
 
 app.post('/api/services/stop', (req, res) => {
     console.log("[Orquestador] Deteniendo todos los motores...");
-    exec("fuser -k 8081/tcp 8000/tcp");
+    exec("fuser -k 8080/tcp 8000/tcp");
     res.json({ status: "stopped" });
 });
 
@@ -412,39 +524,91 @@ app.post('/api/blog/save', (req, res) => {
 });
 
 app.post('/api/agent/query', async (req, res) => {
-    try {
-        const { query, agent, session_mode, persistence, file } = req.body;
-        
-        // Si hay archivo y la intención es persistente, guardamos en la carpeta de recursos
-        if (file && persistence === "mem") {
-            if (!fs.existsSync(ATTACH_PATH)) fs.mkdirSync(ATTACH_PATH, { recursive: true });
+    const { sessionId } = req.body;
+    const currentId = sessionId || 'default';
+    const controller = new AbortController();
+    activeAbortControllers.set(currentId, controller);
+
+    const startTime = Date.now();
+
+        try {
+            const { query, agent, session_mode, persistence, files } = req.body;
             
-            const filePath = path.join(ATTACH_PATH, file.name);
-            const base64Data = file.data.split(';base64,').pop();
-            fs.writeFileSync(filePath, base64Data, { encoding: 'base64' });
-            console.log(`[Orquestador] Archivo persistido en Recursos: ${file.name}`);
-        }
+            const processedFiles = [];
+            if (files && files.length > 0) {
+                const ADJUNTOS_PATH = path.join(BASE_PATH, 'respuestas', 'adjuntos');
+                if (!fs.existsSync(ADJUNTOS_PATH)) fs.mkdirSync(ADJUNTOS_PATH, { recursive: true });
+
+                for (const file of files) {
+                    const filePath = path.join(ADJUNTOS_PATH, file.name);
+                    const base64Data = file.data.split(';base64,').pop();
+                    fs.writeFileSync(filePath, base64Data, { encoding: 'base64' });
+                    processedFiles.push({
+                        name: file.name,
+                        data: file.data,
+                        type: file.type,
+                        path: filePath
+                    });
+                    console.log(`[Orquestador] Adjunto procesado: ${file.name}`);
+                }
+            }
 
         const response = await axios.post(CAMS_BRIDGE_URL + "/query", {
             query: query,
             agent: agent || "bibliotecario",
             session_mode: session_mode || false,
-            file: file
+            files: processedFiles,
+            token: MERCURE_TOKEN
+        }, { 
+            signal: controller.signal,
+            timeout: 300000 
         });
         
-        // —— BACKUP SILENCIOSO: Sobreescribe el .md del modo correspondiente ——
-        // Si la red falla y no llega al frontend, la respuesta no se pierde
+        const textResponse = response.data.response;
+        const bridgeUsage = response.data.usage || {};
+        const bridgeDuration = response.data.duration || (Date.now() - startTime) / 1000;
+        
+        // Usar tokens reales si vienen de llama-server vía bridge, si no estimar
+        const realTokens = bridgeUsage.completion_tokens || Math.floor(textResponse.length / 4);
+        const tps = (realTokens / bridgeDuration).toFixed(2);
+
+        // Guardar métrica
+        const metric = {
+            timestamp: new Date().toISOString(),
+            agent: agent || "bibliotecario",
+            query: query.substring(0, 50),
+            duration: bridgeDuration.toFixed(2),
+            tokens: realTokens,
+            tps: parseFloat(tps)
+        };
+
+        try {
+            const history = fs.existsSync(BENCHMARKS_PATH) ? JSON.parse(fs.readFileSync(BENCHMARKS_PATH, 'utf8')) : [];
+            history.unshift(metric);
+            fs.writeFileSync(BENCHMARKS_PATH, JSON.stringify(history.slice(0, 50), null, 2));
+        } catch (e) {
+            console.error("Error guardando benchmarking:", e);
+        }
+
+        // —— BACKUP SILENCIOSO...
         try {
             const backupFile = path.join(BACKUP_PATH, `${agent || 'bibliotecario'}.md`);
             const timestamp = new Date().toLocaleString();
-            const backupContent = `# Última Respuesta: ${agent}\n_${timestamp}_\n\n**Pregunta:** ${query}\n\n---\n\n${response.data.response}`;
+            const backupContent = `# Última Respuesta: ${agent}\n_${timestamp}_\n\n**Pregunta:** ${query}\n\n---\n\n${textResponse}\n\n> 📊 Métrica: ${tps} tokens/s | ${duration}s`;
             fs.writeFileSync(backupFile, backupContent);
-        } catch (_) { /* Backup no crítico, ignorar errores */ }
+        } catch (_) { /* Backup no crítico */ }
         
-        res.json(response.data);
+        res.json({ ...response.data, metrics: metric });
     } catch (error) {
-        console.error('Error en consulta de agentes:', error.message);
-        res.status(500).json({ error: 'No se pudo conectar con el motor de agentes CAMS' });
+        if (error.name === 'AbortError' || error.message === 'canceled') {
+            console.log(`[Agente] Petición abortada satisfactoriamente.`);
+            res.status(499).json({ error: 'Consulta cancelada por el usuario.' });
+        } else {
+            console.error('Error en consulta de agentes:', error.message);
+            res.status(500).json({ error: 'No se pudo conectar con el motor de agentes CAMS' });
+        }
+    } finally {
+        activeAbortControllers.delete(currentId);
     }
 });
 
@@ -491,7 +655,8 @@ app.post('/api/wiki/scan', async (req, res) => {
         // Enviar al bridge para que los indexe en el contexto RAG
         await axios.post(CAMS_BRIDGE_URL + '/wiki/index', {
             folder: folderPath,
-            files: mdFiles
+            files: mdFiles,
+            token: MERCURE_TOKEN
         }, { timeout: 30000 });
         
         // Actualizar el index local

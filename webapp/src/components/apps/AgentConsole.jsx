@@ -2,68 +2,63 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 
-const AgentConsole = () => {
+const AgentConsole = ({ agent, setAgent, state, updateState, isQuerying, setIsQuerying, onAbort }) => {
     const [query, setQuery] = useState("");
-    const [agent, setAgent] = useState("bibliotecario");
     const [sessionMode, setSessionMode] = useState(false);
-    const [response, setResponse] = useState(() => {
-        return localStorage.getItem('cams-last-response') || "";
-    });
-    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [services, setServices] = useState({ llm: "checking", bridge: "checking" });
     const [models, setModels] = useState({});
     const [selectedModel, setSelectedModel] = useState("qwen35-9b");
-    const [selectedFile, setSelectedFile] = useState(null);
+    const [selectedFiles, setSelectedFiles] = useState([]);
     const [wikiPath, setWikiPath] = useState("");
     const [wikiFolders, setWikiFolders] = useState([]);
     const [wikiScanStatus, setWikiScanStatus] = useState(null);
     const [showWikiPanel, setShowWikiPanel] = useState(false);
     const fileInputRef = useRef(null);
     const responseRef = useRef(null);
-    const [lastSentQuery, setLastSentQuery] = useState("");
+    const abortControllerRef = useRef(null);
+
+    const response = state.response;
+    const lastSentQuery = state.lastQuery;
+    const lastMetrics = state.metrics;
+
+    const fetchStatus = async () => {
+        try {
+            const res = await fetch(`http://${window.location.hostname}:3001/api/services/status`);
+            const data = await res.json();
+            setServices(data);
+        } catch (e) {
+            setServices({ llm: "error", bridge: "error" });
+        }
+    };
+
+    const fetchModels = async () => {
+        try {
+            const res = await fetch(`http://${window.location.hostname}:3001/api/services/models`);
+            const data = await res.json();
+            setModels(data);
+        } catch (e) {}
+    };
+
+    const fetchWikiFolders = async () => {
+        try {
+            const res = await fetch(`http://${window.location.hostname}:3001/api/wiki/folders`);
+            const data = await res.json();
+            setWikiFolders(data.folders || []);
+        } catch (e) {}
+    };
 
     useEffect(() => {
-        const fetchStatus = async () => {
-            try {
-                const res = await fetch(`http://${window.location.hostname}:3001/api/services/status`);
-                const data = await res.json();
-                setServices(data);
-            } catch (e) {
-                setServices({ llm: "error", bridge: "error" });
-            }
-        };
-
-        const fetchModels = async () => {
-            try {
-                const res = await fetch(`http://${window.location.hostname}:3001/api/services/models`);
-                const data = await res.json();
-                setModels(data);
-            } catch (e) {}
-        };
-
-        const fetchWikiFolders = async () => {
-            try {
-                const res = await fetch(`http://${window.location.hostname}:3001/api/wiki/folders`);
-                const data = await res.json();
-                setWikiFolders(data.folders || []);
-            } catch (e) {}
-        };
-
         fetchStatus();
         fetchModels();
         fetchWikiFolders();
+
         const interval = setInterval(fetchStatus, 5000);
         return () => clearInterval(interval);
     }, []);
 
-    // Persistir respuesta en localStorage como capa extra de seguridad
-    useEffect(() => {
-        if (response) localStorage.setItem('cams-last-response', response);
-    }, [response]);
-
     const startService = async () => {
-        setLoading(true);
+        setIsQuerying(true);
         try {
             await fetch(`http://${window.location.hostname}:3001/api/services/start`, {
                 method: 'POST',
@@ -73,81 +68,98 @@ const AgentConsole = () => {
         } catch (e) {
             setError("Error al iniciar motores.");
         } finally {
-            setLoading(false);
+            setIsQuerying(false);
         }
     };
 
     const stopService = async () => {
-        setLoading(true);
+        setIsQuerying(true);
         try {
             await fetch(`http://${window.location.hostname}:3001/api/services/stop`, { method: 'POST' });
         } catch (e) {
             setError("Error al detener motores.");
         } finally {
-            setLoading(false);
+            setIsQuerying(false);
         }
     };
 
     const handleFileSelect = (e) => {
-        const file = e.target.files[0];
-        if (file) setSelectedFile(file);
+        const files = Array.from(e.target.files);
+        if (files.length > 0) setSelectedFiles(prev => [...prev, ...files]);
     };
 
     const handleSend = async (intent = "fast") => {
-        if (!query.trim() && !selectedFile) return;
-        if (loading) return;
+        if (!query.trim() && selectedFiles.length === 0) return;
+        if (isQuerying) return;
         if (services.bridge !== "running") {
             setError("El Bridge no está activo. Enciende los motores primero.");
             return;
         }
 
-        setLoading(true);
+        setIsQuerying(true);
         setError(null);
 
         try {
+            if (abortControllerRef.current) abortControllerRef.current.abort();
+            abortControllerRef.current = new AbortController();
+
+            const fileDataPromises = selectedFiles.map(file => {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => resolve({
+                        name: file.name,
+                        data: reader.result,
+                        type: file.type
+                    });
+                });
+            });
+
+            const encodedFiles = await Promise.all(fileDataPromises);
+
             let payload = {
                 query: query,
                 agent: agent,
                 session_mode: sessionMode,
-                persistence: intent
+                persistence: intent,
+                sessionId: 'main-console',
+                files: encodedFiles
             };
 
-            if (selectedFile) {
-                const reader = new FileReader();
-                reader.readAsDataURL(selectedFile);
-                reader.onload = async () => {
-                    payload.file = {
-                        name: selectedFile.name,
-                        data: reader.result,
-                        type: selectedFile.type
-                    };
-                    await executeQuery(payload);
-                };
-            } else {
-                await executeQuery(payload);
-            }
+            await executeQuery(payload, abortControllerRef.current.signal);
         } catch (err) {
+            if (err.name === 'AbortError') return;
             setError("Error en la consulta. Revisa los servicios.");
         } finally {
-            setLoading(false);
-            setSelectedFile(null);
+            setIsQuerying(false);
+            setSelectedFiles([]);
             if (fileInputRef.current) fileInputRef.current.value = "";
         }
     };
 
-    const executeQuery = async (payload) => {
-        setLastSentQuery(payload.query);
+    const handleAbortLocal = async () => {
+        if (abortControllerRef.current) abortControllerRef.current.abort();
+        await onAbort();
+        setError("Consulta cancelada por el usuario.");
+    };
+
+    const executeQuery = async (payload, signal) => {
+        updateState({ lastQuery: payload.query });
         const endpoint = `http://${window.location.hostname}:3001/api/agent/query`;
         const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal
         });
 
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
-        setResponse(data.response);
+        updateState({ 
+            response: data.response,
+            metrics: data.metrics || null
+        });
         setQuery("");
     };
 
@@ -157,7 +169,7 @@ const AgentConsole = () => {
             const res = await fetch(`http://${window.location.hostname}:3001/api/agent/backup/${agent}`);
             const data = await res.json();
             if (data.content) {
-                setResponse(data.content);
+                updateState({ response: data.content });
                 setError(null);
             } else {
                 setError("Sin backup para este modo todavía.");
@@ -202,6 +214,16 @@ const AgentConsole = () => {
         } catch (e) {
             setWikiScanStatus("❌ Error de conexión");
         }
+    };
+
+    const handlePickDirectory = async () => {
+        try {
+            const res = await fetch(`http://${window.location.hostname}:3001/api/system/pick-directory`);
+            const data = await res.json();
+            if (data.path) {
+                setWikiPath(data.path);
+            }
+        } catch (e) {}
     };
 
     const handleWikiRemove = async (folderPath) => {
@@ -263,6 +285,7 @@ const AgentConsole = () => {
                              agent === 'explorador' ? 'El Explorador' :
                              agent === 'arquitecto' ? 'Arquitecto IT' : 'Debate Socrático'}
                         </h2>
+                        {/* Métricas movidas al área de respuesta para mayor visibilidad */}
                     </div>
                 </div>
 
@@ -305,6 +328,9 @@ const AgentConsole = () => {
                             style={{ flex: 1, padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid #ddd', fontSize: '0.85rem' }}
                             onKeyDown={e => e.key === 'Enter' && handleWikiScan()}
                         />
+                        <button onClick={handlePickDirectory} className="btn-start" style={{ background: '#eee', color: '#333' }}>
+                            📁 Buscar
+                        </button>
                         <button onClick={handleWikiScan} className="btn-start" style={{ whiteSpace: 'nowrap' }}>
                             🔍 Escanear
                         </button>
@@ -338,7 +364,20 @@ const AgentConsole = () => {
                 <div className="response-area" ref={responseRef}>
                     {response ? (
                         <div className="markdown-body fade-in">
-                            <div className="response-actions-top">
+                             <div className="response-actions-top">
+                                {lastMetrics && (
+                                    <div className="metrics-hud fade-in" style={{
+                                        display: 'flex', gap: '15px', padding: '5px 15px',
+                                        background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(5px)',
+                                        borderRadius: '20px', fontSize: '0.75rem', color: '#4a6741',
+                                        border: '1px solid #e8f0e8', boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+                                        marginRight: 'auto'
+                                    }}>
+                                        <span>⏱️ {lastMetrics.duration}s</span>
+                                        <span>⚡ {lastMetrics.tps} tk/s</span>
+                                        <span>🧠 {lastMetrics.tokens} tokens</span>
+                                    </div>
+                                )}
                                 <button onClick={handleSaveResponse} className="btn-save-note">
                                     💾 Guardar ({agent})
                                 </button>
@@ -372,10 +411,14 @@ const AgentConsole = () => {
                     )}
                 </div>
 
-                {selectedFile && (
-                    <div className="file-preview-bar fade-in">
-                        <span>📎 {selectedFile.name}</span>
-                        <button onClick={() => setSelectedFile(null)}>✕</button>
+                {selectedFiles.length > 0 && (
+                    <div className="file-preview-bar fade-in" style={{ flexWrap: 'wrap', gap: '5px' }}>
+                        {selectedFiles.map((file, idx) => (
+                            <div key={idx} style={{ background: '#f0f4f0', padding: '2px 8px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <span>📎 {file.name}</span>
+                                <button onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))} style={{ background: 'transparent', margin: 0, padding: 0 }}>✕</button>
+                            </div>
+                        ))}
                     </div>
                 )}
 
@@ -385,6 +428,7 @@ const AgentConsole = () => {
                         ref={fileInputRef}
                         onChange={handleFileSelect}
                         style={{ display: 'none' }}
+                        multiple
                     />
                     <button type="button" className="btn-attach" onClick={() => fileInputRef.current.click()}>
                         📎
@@ -401,24 +445,38 @@ const AgentConsole = () => {
                         }}
                     />
                     <div className="send-actions">
-                        <button
-                            type="button"
-                            className="btn-send fast"
-                            title="Consulta Volátil"
-                            onClick={() => handleSend("fast")}
-                            disabled={loading || (!query.trim() && !selectedFile) || services.bridge !== 'running'}
-                        >
-                            {loading ? '...' : '⚡'}
-                        </button>
-                        <button
-                            type="button"
-                            className="btn-send mem"
-                            title="Añadir a Memoria y Consultar"
-                            onClick={() => handleSend("mem")}
-                            disabled={loading || (!query.trim() && !selectedFile) || services.bridge !== 'running'}
-                        >
-                            🧠
-                        </button>
+                        {isQuerying ? (
+                            <button
+                                type="button"
+                                className="btn-send"
+                                style={{ background: '#c00' }}
+                                onClick={handleAbortLocal}
+                                title="Detener Consulta"
+                            >
+                                🛑
+                            </button>
+                        ) : (
+                            <>
+                                <button
+                                    type="button"
+                                    className="btn-send fast"
+                                    title="Consulta Volátil"
+                                    onClick={() => handleSend("fast")}
+                                    disabled={isQuerying || (!query.trim() && selectedFiles.length === 0) || services.bridge !== 'running'}
+                                >
+                                    ⚡
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn-send mem"
+                                    title="Añadir a Memoria y Consultar"
+                                    onClick={() => handleSend("mem")}
+                                    disabled={isQuerying || (!query.trim() && selectedFiles.length === 0) || services.bridge !== 'running'}
+                                >
+                                    🧠
+                                </button>
+                            </>
+                        )}
                     </div>
                 </form>
             </div>

@@ -1,0 +1,148 @@
+.nexus-container {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    background: #050505;
+    overflow: hidden;
+    font-family: 'Inter', sans-serif;
+    color: white;
+}
+
+.nexus-side {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    overflow: hidden;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.nexus-side:last-child {
+    border-right: none;
+}
+
+.nexus-side:hover {
+    flex: 1.5;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* Fondos y Efectos */
+.nexus-bg-effect {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    opacity: 0.3;
+    transition: opacity 0.6s ease;
+}
+
+.nexus-side:hover .nexus-bg-effect {
+    opacity: 0.6;
+}
+
+/* Modo Día (Dorado/Azul Suave) */
+.side-day .nexus-bg-effect {
+    background: radial-gradient(circle at center, rgba(0, 150, 255, 0.1) 0%, transparent 70%);
+}
+
+/* Nexus Control (Cian/Tecnológico) */
+.side-nexus .nexus-bg-effect {
+    background: radial-gradient(circle at center, rgba(0, 255, 200, 0.1) 0%, transparent 70%);
+}
+
+/* Modo Noche (Violeta/Deep Blue) */
+.side-night .nexus-bg-effect {
+    background: radial-gradient(circle at center, rgba(150, 0, 255, 0.1) 0%, transparent 70%);
+}
+
+.nexus-content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    pointer-events: none;
+}
+
+.nexus-content h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: 0.5rem;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+.nexus-content p {
+    font-size: 0.8rem;
+    letter-spacing: 0.2rem;
+    opacity: 0.5;
+    text-transform: uppercase;
+}
+
+/* Indicadores de Estado */
+.nexus-status {
+    margin-top: 2rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #00ff00;
+    box-shadow: 0 0 10px #00ff00;
+}
+
+.status-dot.offline {
+    background: #ff3333;
+    box-shadow: 0 0 10px #ff3333;
+}
+
+.nexus-lab-btn {
+    margin-top: 1.5rem;
+    background: rgba(241, 196, 15, 0.1);
+    border: 1px solid rgba(241, 196, 15, 0.3);
+    color: #f1c40f;
+    padding: 0.6rem 1.2rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    letter-spacing: 0.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    backdrop-filter: blur(5px);
+    z-index: 20;
+    pointer-events: auto;
+}
+
+.nexus-lab-btn:hover {
+    background: rgba(241, 196, 15, 0.2);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(241, 196, 15, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .nexus-container {
+        flex-direction: column;
+    }
+    .nexus-side {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .nexus-side:hover {
+        flex: 2;
+    }
+}

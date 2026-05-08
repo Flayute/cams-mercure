@@ -1,0 +1,116 @@
+.nexus-workspace {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    color: #111111; /* Texto oscuro para fondo claro */
+    background: #f8f9fa; /* Fondo claro limpio */
+    min-height: 100vh;
+}
+
+.workspace-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #00ffcc;
+    padding-bottom: 1rem;
+}
+
+.header-title h1 {
+    font-size: 1.5rem;
+    letter-spacing: 0.3rem;
+    margin: 0;
+    color: #050505;
+}
+
+.header-title h1 span {
+    color: #008877;
+}
+
+/* Nodes Grid */
+.node-card {
+    background: white;
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border-radius: 12px;
+    padding: 1.5rem;
+    color: #333;
+}
+
+.stat label {
+    color: #666;
+    font-weight: 700;
+}
+
+.stat-bar {
+    background: #eee;
+}
+
+.stat-bar div {
+    background: #00ccaa;
+}
+
+/* Terminal (Se queda oscura para el rollo "hacker") */
+.command-center {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    color: #00ff66;
+}
+
+.command-input-group input {
+    background: #333;
+    border: 1px solid #444;
+    color: #00ff66;
+}
+
+.cmd-output {
+    background: #000;
+    color: #00ff66;
+    border: 1px solid #222;
+    min-height: 100px;
+}
+
+.quick-actions button {
+    background: white;
+    border: 1px solid #00ccaa;
+    color: #008877;
+    font-weight: 600;
+}
+
+.quick-actions button:hover {
+    background: #00ccaa;
+    color: white;
+}
+
+/* Terminal Result Styling */
+.cmd-result-container {
+    margin-top: 1rem;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.cmd-status-bar {
+    background: #333;
+    color: #fff;
+    padding: 4px 10px;
+    font-size: 0.6rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+}
+
+.cmd-result-container.error .cmd-status-bar {
+    background: #ff3333;
+}
+
+.cmd-output {
+    margin: 0;
+    padding: 1rem;
+    background: #000;
+    color: #00ff66;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    max-height: 300px;
+    overflow-y: auto;
+}

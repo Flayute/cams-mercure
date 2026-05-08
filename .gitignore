@@ -19,6 +19,8 @@ nodes.json
 
 # Logs y datos de sesión
 *.log
+*.pid
+_wiki.md
 agoras/
 respuestas/
 

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>CAMS Mercure - Marketing Canvas</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f4f7f4; color: #2c3e50; padding: 2rem; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        h1 { border-bottom: 2px solid #4a6741; padding-bottom: 1rem; color: #4a6741; }
+        #canvas { margin-top: 2rem; padding: 1rem; border: 1px dashed #ccc; border-radius: 8px; min-height: 200px; }
+        textarea { width: 100%; height: 150px; margin-top: 1rem; padding: 1rem; border-radius: 8px; border: 1px solid #ddd; font-family: monospace; }
+        button { background: #4a6741; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px; cursor: pointer; margin-top: 1rem; font-weight: bold; }
+        button:hover { background: #3a5234; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏛️ CAMS Marketing Canvas</h1>
+        <p>Pega aquí el código <strong>[CANVAS_DIAGRAM]</strong> generado por el Heraldo para visualizar la estrategia.</p>
+        <textarea id="mermaid-input" placeholder="graph TD..."></textarea>
+        <button onclick="renderDiagram()">Renderizar Estrategia</button>
+        <div id="canvas" class="mermaid"></div>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'neutral' });
+        function renderDiagram() {
+            const input = document.getElementById('mermaid-input').value;
+            const canvas = document.getElementById('canvas');
+            canvas.removeAttribute('data-processed');
+            canvas.innerHTML = input;
+            mermaid.contentLoaded();
+        }
+    </script>
+</body>
+</html>

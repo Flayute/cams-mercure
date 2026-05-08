@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import AgentConsole from './apps/AgentConsole';
 import AgoraConsole from './apps/AgoraConsole';
 import Benchmarks from './apps/Benchmarks';
+import ClientManager from './apps/ClientManager';
+import DocumentFormatter from './apps/DocumentFormatter';
+import VisualCanvas from './apps/VisualCanvas';
 
 const MercureConsole = () => {
     const [activeView, setActiveView] = useState('console');
@@ -12,8 +15,16 @@ const MercureConsole = () => {
         investigador: { response: "", lastQuery: "", metrics: null },
         explorador: { response: "", lastQuery: "", metrics: null },
         arquitecto: { response: "", lastQuery: "", metrics: null },
+        heraldo: { response: "", lastQuery: "", metrics: null },
+        cartografo: { response: "", lastQuery: "", metrics: null },
         debate: { response: "", lastQuery: "", metrics: null }
     });
+    const [pendingProjection, setPendingProjection] = useState(null);
+
+    const projectToCanvas = (content, agent) => {
+        setPendingProjection({ content, agent });
+        setActiveView('canvas');
+    };
 
     const handleAbort = async () => {
         try {
@@ -53,10 +64,10 @@ const MercureConsole = () => {
                     </button>
 
                     <button
-                        className={`nav-item ${activeView === 'agora' ? 'active' : ''}`}
-                        onClick={() => setActiveView('agora')}
+                        className={`nav-item ${activeView === 'clients' ? 'active' : ''}`}
+                        onClick={() => setActiveView('clients')}
                     >
-                        <span className="nav-icon">🏛️</span> El Ágora Cuántica
+                        <span className="nav-icon">🧬</span> Session Master
                     </button>
                     
                     <button
@@ -66,11 +77,28 @@ const MercureConsole = () => {
                         <span className="nav-icon">📊</span> Métricas y Benchmarks
                     </button>
 
+                    <button
+                        className={`nav-item ${activeView === 'formatter' ? 'active' : ''}`}
+                        onClick={() => setActiveView('formatter')}
+                    >
+                        <span className="nav-icon">📄</span> Editor & Maquetador
+                    </button>
+
+                    <button
+                        className={`nav-item ${activeView === 'canvas' ? 'active' : ''}`}
+                        onClick={() => setActiveView('canvas')}
+                    >
+                        <span className="nav-icon">🎨</span> Neuro-Canvas
+                    </button>
+
                     <div className="nav-info-block">
-                        <p>LIB: Bibliotecario</p>
-                        <p>RES: Investigador</p>
+                        <p>BIB: Bibliotecario</p>
+                        <p>INV: Investigador</p>
                         <p>EXP: Explorador</p>
-                        <p>DEB: Debate Socrático</p>
+                        <p>ARQ: Arquitecto IT</p>
+                        <p>HER: El Heraldo</p>
+                        <p>CAR: Cartógrafo Visual</p>
+                        <p>JUN: Junta de Expertos</p>
                     </div>
                 </nav>
 
@@ -104,9 +132,20 @@ const MercureConsole = () => {
                             isQuerying={isQuerying}
                             setIsQuerying={setIsQuerying}
                             onAbort={handleAbort}
+                            onProject={projectToCanvas}
                         />
-                    ) : 
-                     activeView === 'agora' ? <AgoraConsole /> : <Benchmarks />}
+                    ) : activeView === 'clients' ? (
+                        <ClientManager />
+                    ) : activeView === 'formatter' ? (
+                        <DocumentFormatter />
+                    ) : activeView === 'canvas' ? (
+                        <VisualCanvas 
+                            incomingProjection={pendingProjection} 
+                            clearProjection={() => setPendingProjection(null)} 
+                        />
+                    ) : (
+                        <Benchmarks />
+                    )}
                 </div>
             </main>
         </div>

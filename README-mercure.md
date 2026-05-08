@@ -1,152 +1,437 @@
-# CAMS Mercure 🧠⚡
+# 🌊 CAMS Mercure - Guía Completa
 
-> *El mensajero entre tu conocimiento y el mundo.*
-
----
-
-CAMS Mercure no es un chat con tu IA. No es una memoria. Es un espacio de aprendizaje, investigación y potenciación de la mente expandida — un lugar de encuentro entre tus notas, tu filosofía, tu hardware y tu propia soberanía intelectual.
-
-Todo corre en tu dispositivo. Ningún dato sale de él.
+> **Mercure** es el sistema de comunicación en tiempo real que une al usuario con los agentes de IA de CAMS. Es el "sistema nervioso" que permite la interacción fluida, persistente y contextualizada con múltiples agentes especializados.
 
 ---
 
-## Qué es
+## 📌 ¿Qué es CAMS Mercure?
 
-Un espacio de trabajo donde convergen cuatro elementos:
+**CAMS Mercure** es un ecosistema de inteligencia artificial local diseñado para profesionales que requieren **soberanía absoluta sobre sus datos**. No es solo un chat con IA; es una herramienta de gestión de conocimiento y casos clínicos/legales que integra:
 
-- **Tus notas** — todo lo que has escrito, investigado y documentado en Obsidian
-- **Internet** — fuentes externas consultadas en tiempo real
-- **Tu hardware** — inferencia local, privada, sin APIs de pago
-- **Tu criterio** — tú decides qué entra en tu base de conocimiento y qué no
-
-La interfaz es un único cuadro de diálogo con cuatro modos. Sin configuración compleja. Sin fricciones.
-
----
-
-## Los cuatro modos
-
-### 📚 Bibliotecario
-Consulta tu conocimiento acumulado. El Bibliotecario conoce todo lo que tienes en tus vaults de Obsidian y sintetiza respuestas desde ahí. Tu memoria personal, accesible en lenguaje natural.
-
-Técnicamente: RAG longitudinal sobre wikis federadas con ingestión incremental por hash MD5. Solo procesa lo que ha cambiado.
-
-### 🔍 Investigador
-Cruza tus notas con búsquedas en internet en tiempo real. Ideal para contrastar lo que ya sabes con lo que está pasando ahora, o para enriquecer una idea propia con fuentes externas.
-
-Técnicamente: Combina el contexto comprimido de tus vaults con scraping de búsqueda en tiempo real antes de generar la respuesta.
-
-### 🧭 Explorador
-Respuesta rápida, sin cargar la biblioteca. El Explorador carga tu perfil de usuario y contexto de hardware para dar respuestas directas y personalizadas sin el peso del RAG completo.
-
-Técnicamente: Carga solo `perfil-de-usuario.md` y `perfil-de-hardware.md`. Latencia mínima, contexto máximo sobre ti.
-
-### ⚔️ Debate
-El modo más avanzado. El Bibliotecario y el Investigador debaten entre sí — tu conocimiento local contra el conocimiento global — y sintetizan una conclusión. Una conversación filosófica entre dos perspectivas para llegar a síntesis que ninguna de las dos habría generado sola.
-
-Técnicamente: Cuatro llamadas paralelas al modelo. Cada agente genera su argumento, luego un árbitro sintetiza. El `thought_ultra` de cada agente queda auditado en comentario HTML dentro del output — visible para el desarrollador, invisible para el usuario.
+- **Búsqueda web en tiempo real** a través de motores de búsqueda privados
+- **Memorias persistentes compartidas** entre sesiones
+- **Junta de Expertos** multidisciplinar (Psicosomática, Fisioterapia Somática, Neurociencia)
+- **Gestión de casos** con identidad única y contexto automático
+- **Protocolo Caveman 2.0** para compresión semántica de alta fidelidad
 
 ---
 
-## El Ágora *(experimental)*
+## 🌊 ¿Qué es Mercure?
 
-¿Tienes un móvil que ya no usas? ¿Una Raspberry Pi? ¿Un ordenador viejo pero potente?
+### El Concepto
 
-El modo Ágora convierte cualquier dispositivo de tu red en un nodo activo. En lugar de un solo modelo en un solo dispositivo, múltiples modelos de distinto tamaño debaten entre sí a través de Tailscale. El conocimiento circula, se refina y vuelve al centro.
+**Mercure** (pronunciado "me-rk-er" o "mer-cure") es un protocolo de publicación-suscripción (PubSub) en tiempo real diseñado por la [European Space Agency (ESA)](https://mercuryspecifications.github.io/) para aplicaciones críticas de alto rendimiento. 
 
-La gracia del sistema está precisamente en la asimetría. Un modelo con todo el contexto y uno sin ninguno no producen la misma respuesta que cualquiera de los dos por separado. A veces la síntesis más útil viene del que menos sabe — porque no ha descartado lo obvio.
+En el contexto de CAMS, **Mercure actúa como el sistema nervioso central** que:
 
-*Es un experimento en curso. Los resultados son prometedores.*
+1. **Difunde actualizaciones en tiempo real** desde el servidor a todos los clientes conectados
+2. **Mantiene el contexto de la conversación** persistente entre agentes
+3. **Sincroniza el estado del caso** entre diferentes componentes del sistema
+4. **Permite la interacción fluida** entre el usuario y múltiples agentes simultáneamente
 
----
+### Por qué Mercure es Crucial para CAMS
 
-## Arquitectura
-
-```
-WebApp (React) ←→ Orquestador (Node.js)
-                        ↓
-               Agente Bridge (Python)
-               ↙              ↘
-    LLM local               Búsqueda web
-    (TurboQuant+)           (tiempo real)
-               ↘              ↙
-            Vaults Obsidian
-            (wikis federadas)
-```
-
-**Orquestador (Node.js)**: Sistema nervioso central. Gestiona el ciclo de vida de los procesos LLM, la persistencia en Obsidian y la sincronización Tailscale entre nodos.
-
-**Agente Bridge (Python)**: Lógica RAG, scraping de búsqueda y compresión semántica. Aquí vive la inteligencia del sistema.
-
-**TurboQuant+**: Motor de inferencia. Compresión avanzada de caché KV que permite contextos de 100k tokens en hardware consumer.
-
----
-
-## Protocolo de compresión semántica
-
-Para maximizar la densidad de información en el contexto, Mercure utiliza compresión Caveman en la capa interna de razonamiento.
-
-El modelo razona en telegráfico — nodos, relaciones, operadores lógicos (`→`, `!`, `⊘`). El output que llega al usuario es lenguaje natural. La capa de compresión es invisible, auditable, y reduce el contexto entre un 60-75% sin pérdida de información clínica relevante.
-
-```
-<thought_ultra>
-[Razonamiento comprimido — solo el desarrollador lo ve]
-</thought_ultra>
-
-<output>
-[Respuesta en lenguaje natural — lo que llega al usuario]
-</output>
-```
-
----
-
-## Rendimiento (servidor maestro)
-
-Benchmarks en RTX 3050 8GB — Qwen 9B:
-
-| Métrica | Valor |
+| Necesidad de CAMS | ¿Cómo lo resuelve Mercure? |
 |---|---|
-| Prompt evaluation | ~1000 tokens/seg |
-| Generación | ~20–42 tokens/seg |
-| Contexto activo | 80k tokens |
-| Modo Debate (4 agentes paralelos) | ✅ estable |
+| Comunicación en tiempo real entre usuario y agentes | El servidor emite actualizaciones que llegan instantáneamente al frontend |
+| Contexto persistente de sesiones | Los mensajes de Mercure mantienen el historial accesible |
+| Múltiples agentes conectados | Un solo endpoint `/query` atiende peticiones concurrentes |
+| Actualización dinámica del estado del caso | El servidor emite eventos cuando cambia el contexto |
 
 ---
 
-## Setup
+## 🏗️ Arquitectura de CAMS Mercure
 
-```bash
-# 1. Motor de inferencia (TurboQuant+, puerto 8081)
-bash llama-turbo-server.sh
+### Diagrama de Flujos
 
-# 2. Agente bridge
-cd bridge && pip install -r requirements.txt && python server.py
-
-# 3. Interfaz
-cd webapp && npm install && npm start
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      USER BROWSER                               │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
+│  │Mercure      │  │Mercure      │  │Mercure                   │ │
+│  │ Console     │  │ Console    │  │ Console                  │ │
+│  │(Agentes)    │  │(Explorador)│  │(Arquitecto)              │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
+│           \        |        /         \        /                 │
+│            \       |       /           \      /                  │
+│             \      |      /             \    /                   │
+│              \     |      /               \  /                   │
+│               \    |     /                  \/                   │
+│                \   |     /                                       │
+│                 \  |    /                                       │
+│                  \ |   /                                        │
+│                   \|  /                                         │
+│                    \/                                          │
+│              ┌─────────────────┐                               │
+│              │Mercure Bridge   │  ←→  ⚡ LLM Server (8080)     │
+│              │  (FastAPI)      │      │  Llama.cpp              │
+│              │  :8000          │      │                          │
+│              └────────┬────────┘      │                          │
+│                       │              │                           │
+│                       │              │                           │
+│              ┌────────┴────────┐     │                          │
+│              │ SearxNG         │     │                          │
+│              │  :8001          │     │                          │
+│              └─────────────────┘     │                          │
+│                                     │                          │
+│                          ┌──────────┴──────────┐               │
+│                          │  Document Vault      │               │
+│                          │  (Clientes, Backups) │               │
+│                          └─────────────────────┘               │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-Para el modo Ágora, conecta los dispositivos satélite a tu red Tailscale:
-```bash
-./scripts/setup_satellite.sh
+### Componentes del Bridge (FastAPI)
+
+El **Mercure Bridge** (`bridge/server.py`) es el corazón de la comunicación:
+
+| Endpoint | Descripción |
+|---|---|
+| `POST /query` | Punto de entrada principal para consultas a los agentes |
+| `POST /caveman/encode` | Compresión semántica de datos |
+| `POST /caveman/decode` | Expansión de datos comprimidos |
+| `POST /wiki/index` | Indexación de documentos del vault |
+
+---
+
+## 🎭 Los Agentes de CAMS Mercure
+
+El sistema incluye **agentes especializados** que se activan según el contexto de la consulta:
+
+### 🔬 Agentes Principales
+
+| Agente | Rol | Descripción |
+|---|---|---|
+| 📚 **Bibliotecario** | Default | Responde consultas generales usando la Wiki Caveman local |
+| 🎙️ **Junta de Expertos** | Análisis multidisciplinar | Psicosomática + Fisioterapia + Neurociencia |
+| 🧭 **Explorador** | Navegación web | Busca en SearxNG con tono conversacional |
+| 🔍 **Investigador** | Verificación | Contrasta conocimiento local con fuentes externas |
+| 💻 **Arquitecto** | Diseño técnico | Resuelve problemas técnicos con "fricción cero" |
+| 📣 **Heraldo** | Marketing | Estrategias de marca personal y promoción ética |
+
+### 🔧 Agentes Especializados
+
+| Agente | Rol | Descripción |
+|---|---|---|
+| 🧬 **Somatic Session Master** | Gestión de casos | Identidad única y contexto automático |
+| 🧠 **Motor RAG** | Búsqueda aumentada | Contexto de documentos + LLM |
+| 🦴 **Protocolo Caveman** | Compresión | Reduce tokens en 70% preservando hechos |
+
+---
+
+## 📂 Estructura del Vault
+
+```
+CAMS-Mercure/
+├── /clientes/              # Historiales y perfiles de casos
+│   ├── {client_id}/
+│   │   ├── history.md     # Cronología del caso
+│   │   ├── profile.json   # Perfil del paciente/cliente
+│   │   └── ...
+│   └── ...
+├── /backups/               # Sesiones efímeras y copias de agentes
+│   ├── session.md         # Wiki efímero de sesión
+│   ├── debate.md          # Sesión de Junta de Expertos
+│   └── ...
+├── /models/                # LLMs locales (.gguf, .mmproj)
+├── /substrate/             # Base de conocimiento profundo
+├── /respuestas/            # Informes generados por agentes
+├── /profile/               # Engramas de identidad del usuario
+├── /respuestas/            # Informes de los agentes
+├── /perfil/                # Engramas de identidad
+├── /caveman/               # Índice comprimido de documentos
+│   └── _wiki.md
+└── /backups/
+    └── session.md
 ```
 
-El script detecta el sistema (Termux/Linux) y configura el nodo automáticamente.
+---
 
-**Outputs generados automáticamente en Obsidian:**
-- `RESPONSE.md` — Bibliotecario
-- `INVESTIGATION.md` — Investigador  
-- `EXPLORER.md` — Explorador
-- `DEBATE.md` — Debate socrático
+## 🚀 Cómo Usar CAMS Mercure
+
+### Paso 1: Iniciar el Sistema
+
+```bash
+# Otorgar permisos
+chmod +x mercure_start.sh
+
+# Iniciar todo el ecosistema
+./mercure_start.sh
+```
+
+El sistema iniciará los siguientes servicios:
+
+| Servicio | Puerto | Estado |
+|---|---|---|
+| LLM Server | 8080 | ⚡ Motor de inferencia |
+| Mercure Bridge | 8000 | 🌊 Orquestador de agentes |
+| Orquestador UI | 3001 | 🖥️ Interfaz Web |
+| SearxNG | 8001 | 🔍 Motor de búsqueda |
+
+### Paso 2: Acceder a la Interfaz
+
+Navega a `http://localhost:3001` en tu navegador. La interfaz te permitirá:
+
+- Crear nuevos casos (clientes)
+- Activar casos existentes
+- Interactuar con los agentes
+- Gestionar el vault de documentos
+
+### Paso 3: Realizar Consultas
+
+#### Consulta Básica
+
+```
+En el cuadro de diálogo, escribe tu consulta y presiona Enter.
+```
+
+El sistema procesará la consulta según el agente predeterminado (**Bibliotecario**).
+
+#### Consulta con Agente Específico
+
+```
+1. Selecciona el agente deseado en el menú desplegable
+2. Ingresa tu consulta
+3. El agente procesará y responderá
+```
+
+### Paso 4: Activar un Caso (Cliente)
+
+```
+1. Haz clic en "Crear Caso" o "Seleccionar Caso"
+2. Proporciona un nombre identificativo único
+3. El sistema genera un hash único y estructura de carpetas
+4. Todos los mensajes del caso se guardan automáticamente
+```
 
 ---
 
-## Créditos
+## 🔑 Conceptos Fundamentales de Mercure
 
-- [TheTom/turboquant_plus](https://github.com/TheTom/turboquant_plus) — motor de inferencia
-- [Andrej Karpathy — LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — arquitectura de conocimiento acumulativo
-- [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman) — protocolo de compresión semántica
+### 1. **Somatic Session Master (Gestor de Casos)**
+
+Cada caso tiene una **identidad única** basada en un hash criptográfico de su estado. Esto permite:
+
+- **Contexto automático**: Al activar un caso, el LLM "absorbe" todo el historial
+- **Persistencia**: Los datos sobreviven reinicios del sistema
+- **Aislamiento**: Cada caso es completamente independiente
+
+### 2. **Junta de Expertos**
+
+Trés perspectivas analizan simultáneamente:
+
+1. **Psicología Psicosomática**: Patrones emocionales, trauma, "Espiral de Erikson"
+2. **Fisioterapia Somática**: Estructura, tejido, manifestación física
+3. **Neurociencia**: Neuroquímica, plasticidad, sistema nervioso autónomo
+
+```
+🧠 ANÁLISIS PSICOSOMÁTICO
+🦴 EVALUACIÓN SOMÁTICA  
+🔬 SOPORTE NEUROCIENTÍFICO
+🏛️ SÍNTESIS TRANSVERSAL
+```
+
+### 3. **Wiki Efímero de Sesión**
+
+Memoria de corto plazo compartida entre agentes:
+
+- **Duración limitada**: Se resetea entre sesiones para evitar contaminación cruzada
+- **Contexto relevante**: Mantiene las últimas 5 interacciones
+- **Difusión instantánea**: Todos los agentes tienen acceso inmediato
+
+### 4. **Protocolo Caveman 2.0**
+
+Compresión semántica de alta fidelidad:
+
+```
+REGLAS:
+1. Quita gramática (artículos, preposiciones, conectores)
+2. Pensamientos ATÓMICOS: 2-5 palabras por frase
+3. Voz ACTIVA siempre
+4. PRESERVAR: Números, fechas, nombres propios
+5. NO cortesía ni relleno. Solo hechos.
+```
+
+**Reducción de tokens: 70%** sin perder información esencial.
+
+### 5. **Exploración Invisible**
+
+Búsqueda web privada a través de **SearxNG**:
+
+- **Privacidad**: Ningún dato sale del entorno local
+- **Contraste crítico**: "New Age" vs. ciencia rigurosa
+- **Tono conversacional**: Respuestas elocuentes, no robóticas
 
 ---
 
-*CAMS Mercure es un proyecto personal en desarrollo activo.*  
-*Licencia: Privada.*
+## 🛠️ Configuración Avanzada
+
+### Variables de Entorno del Bridge
+
+```bash
+export MERCURE_TOKEN="cambiame-por-token-seguro"
+export MERCURE_HOST="0.0.0.0"
+export MERCURE_PORT=8000
+export SEARXNG_URL="http://127.0.0.1:8001/search"
+export CAMS_BASE="/home/usuario/CAMS-Mercure"
+```
+
+### Seguridad
+
+| Configuración | Valor Recomendado |
+|---|---|
+| Token de Acceso | Cambiar en `bridge/server.py` línea 16 |
+| Puerto | `8000` (o cualquier disponible) |
+| Host Binding | `0.0.0.0` para red local / `127.0.0.1` para localhost |
+
+---
+
+## 📊 Flujo de Una Consulta Típica
+
+```
+┌─────────────────┐
+│  Usuario envía  │
+│  consulta       │
+└────┬────────────┘
+     │
+     ▼
+┌─────────────────┐
+│  Bridge recibe  │
+│  (FastAPI)      │
+└────┬────────────┘
+     │
+     ├───────────► [Token Check] ──┐
+     │                            │
+     ▼                            ▼
+┌─────────────────┐       ┌─────────────────┐
+│  Cargar Contexto │◄─────│  Validar Token  │
+│  (Caso/Perfil)  │       │                 │
+└────┬────────────┘       └─────────────────┘
+     │
+     ▼
+┌─────────────────┐
+│  Generar Prompt │
+│  con Agentes    │
+└────┬────────────┘
+     │
+     ▼
+┌─────────────────┐
+│  LLM Server     │
+│  (8080) procesa │
+└────┬────────────┘
+     │
+     ▼
+┌─────────────────┐
+│  Emitir respuesta│
+│  (Mercure)      │
+└────┬────────────┘
+     │
+     ▼
+┌─────────────────┐
+│  Renderizar en  │
+│  UI del usuario │
+└─────────────────┘
+```
+
+---
+
+## 🧪 Agentes Personalizados
+
+El sistema permite crear agentes personalizados añadiendo handlers en `bridge/server.py`:
+
+```python
+elif request.agent == "mi_agente_personalizado":
+    # Lógica personalizada
+    ...
+```
+
+---
+
+## 🔍 Agentes del Sistema
+
+El sistema incluye agentes especializados para diferentes contextos:
+
+### 🔬 Agentes de Consulta
+
+| Agente | Descripción |
+|---|---|
+| 📚 Bibliotecario | Default, usa Wiki Caveman local |
+| 🎙️ Junta de Expertos | Análisis multidisciplinar |
+| 🧭 Explorador | Búsqueda web conversacional |
+| 🔍 Investigador | Verificación cruzada |
+| 💻 Arquitecto | Solución técnica |
+| 📣 Heraldo | Estrategia de marca |
+
+### 🧬 Agentes Especiales
+
+| Agente | Descripción |
+|---|---|
+| 🧬 Somatic Session Master | Gestión de casos |
+| 🧠 Motor RAG | Búsqueda aumentada |
+| 🦴 Protocolo Caveman | Compresión semántica |
+
+---
+
+## 📚 Referencias Externas
+
+- [Mercure Protocol Specification](https://mercuryspecifications.github.io/) - La especificación original de la ESA
+- [FastAPI Documentation](https://fastapi.tiangolo.com/) - Framework del bridge
+- [SearxNG](https://github.com/searxng/searxng) - Motor de búsqueda privado
+
+---
+
+## 🤝 Contribución
+
+CAMS Mercure es un proyecto de la **Unidad de Inteligencia CAMS**.
+
+> *"El conocimiento es el único bien que crece cuando se comparte, siempre que mantengas el control sobre el engrama."*
+
+---
+
+**Desarrollado por la Unidad de Inteligencia CAMS**
+
+**CAMS** = **C**ognitiva | **A**utónoma | **M**ercure | **S**omática
+
+---
+
+## 📦 Requisitos del Sistema
+
+| Componente | Requisito |
+|---|---|
+| CPU | 4+ núcleos |
+| RAM | 16GB+ |
+| GPU | 8GB VRAM recomendado (Llama.cpp) |
+| Almacenamiento | 50GB+ para modelos y vault |
+| SO | Linux recomendado (Nobara Linux) |
+
+---
+
+## 🔄 Actualizaciones
+
+Para actualizar los modelos:
+
+```bash
+# Descargar nuevos modelos
+./scripts/model_auditor.py download
+
+# Actualizar la base de conocimiento
+./scripts/update_knowledge_base.sh
+```
+
+---
+
+## 📝 Changelog
+
+### v2.0.0 (Actual)
+- 🔥 Protocolo Caveman 2.0 con reducción 70% de tokens
+- 🎭 Agentes especializados con identidad única
+- 🧠 Wiki Efímero de Sesión compartido
+- 🌐 Exploración invisible vía SearxNG
+- 🔐 Soberanía de datos absoluta (100% local)
+
+### v1.0.0
+- 🎉 Lanzamiento inicial de CAMS Mercure
+
+---
+
+*Última actualización: 2026-04-28*

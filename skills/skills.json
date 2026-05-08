@@ -1,0 +1,25 @@
+{
+    "skills": [
+        {
+            "id": "pi_monitor",
+            "name": "Monitor de Satélite",
+            "description": "Audita la Raspberry Pi 500: temperatura, procesos activos y modo de hardware.",
+            "target": "remote",
+            "script": "pi_monitor.sh"
+        },
+        {
+            "id": "caveman_reindex",
+            "name": "Reindexación Caveman",
+            "description": "Forza una actualización del índice RAG transversal para incluir nuevos documentos o código.",
+            "target": "local",
+            "script": "reindex.py"
+        },
+        {
+            "id": "system_audit",
+            "name": "Auditoría de Sistema",
+            "description": "Verifica el estado del Acer y los servicios del Bridge.",
+            "target": "local",
+            "script": "audit_system.sh"
+        }
+    ]
+}

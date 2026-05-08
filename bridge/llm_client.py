@@ -11,11 +11,13 @@ class LLMClient:
         self.base_url = base_url
         self.model = model
 
-    def chat(self, system_prompt, user_prompt, images=None, temperature=0.1):
+    def chat(self, system_prompt, user_prompt, images=None, temperature=0.1, max_tokens=None):
         import time
-        content = [{"type": "text", "text": user_prompt}]
-        
-        if images:
+        # Si no hay imágenes, enviamos el contenido como string puro para evitar errores 400 en algunos motores
+        if not images:
+            content = user_prompt
+        else:
+            content = [{"type": "text", "text": user_prompt}]
             for img in images:
                 content.append({
                     "type": "image_url",
@@ -23,17 +25,17 @@ class LLMClient:
                 })
 
         payload = {
-            "model": self.model,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": content}
             ],
-            "temperature": temperature
+            "temperature": temperature,
+            "max_tokens": max_tokens if max_tokens else 4096
         }
         
         start_time = time.time()
         try:
-            response = requests.post(f"{self.base_url}/chat/completions", json=payload, timeout=300)
+            response = requests.post(f"{self.base_url}/chat/completions", json=payload, timeout=900)
             response.raise_for_status()
             res_json = response.json()
             duration = time.time() - start_time

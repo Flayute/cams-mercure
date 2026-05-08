@@ -1,0 +1,37 @@
+{
+  "project": "CAMS Mercure Mobile Orchestration",
+  "base_url": "http://[TU_IP_DEL_ACER]:3001",
+  "endpoints": {
+    "status": {
+      "method": "GET",
+      "path": "/api/mobile/status",
+      "desc": "Estado general y uptime"
+    },
+    "resources": {
+      "method": "GET",
+      "path": "/api/mobile/system/resources",
+      "desc": "RAM y CPU del Acer"
+    },
+    "list_models": {
+      "method": "GET",
+      "path": "/api/mobile/models",
+      "desc": "Lista de modelos disponibles"
+    },
+    "switch_model": {
+      "method": "POST",
+      "path": "/api/mobile/control/switch-model",
+      "body": { "modelId": "id_del_modelo", "context": 128000 },
+      "desc": "Cambiar modelo en caliente"
+    },
+    "stop": {
+      "method": "POST",
+      "path": "/api/mobile/control/stop-all",
+      "desc": "Apagado total de emergencia"
+    },
+    "index_wiki": {
+      "method": "POST",
+      "path": "/api/mobile/trigger/index",
+      "desc": "Disparar escaneo de Wiki"
+    }
+  }
+}

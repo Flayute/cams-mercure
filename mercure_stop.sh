@@ -25,7 +25,13 @@ if [ -f "$SCRIPT_DIR/.node.pid" ]; then
 fi
 
 # Limpieza forzosa de seguridad
-fuser -k 3001/tcp 8000/tcp 2>/dev/null
+fuser -k 3001/tcp 8000/tcp 8080/tcp 2>/dev/null
+
+if [ -f "$SCRIPT_DIR/.llama.pid" ]; then
+    kill $(cat "$SCRIPT_DIR/.llama.pid") 2>/dev/null
+    rm "$SCRIPT_DIR/.llama.pid"
+    echo -e "${YELLOW} - Motor LLM detenido.${NC}"
+fi
 
 # SearxNG (Opcional)
 if command -v podman >/dev/null 2>&1; then

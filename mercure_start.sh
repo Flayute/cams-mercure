@@ -17,8 +17,12 @@ echo -e "${BLUE}==============================================${NC}"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 mkdir -p "$SCRIPT_DIR/logs"
 
-# 1. Limpieza de Puertos
-echo -e "${YELLOW}[1/5] Limpiando procesos antiguos...${NC}"
+# 1. Encender el Cerebro (LLM)
+echo -e "${YELLOW}[1/6] Seleccionando y encendiendo el Cerebro (LLM)...${NC}"
+bash "$SCRIPT_DIR/scripts/llama-mercure-35b.sh"
+
+# 2. Limpieza de Puertos
+echo -e "${YELLOW}[2/6] Limpiando procesos de red antiguos...${NC}"
 fuser -k 3001/tcp 8000/tcp 2>/dev/null
 
 # 2. Verificación de SearxNG (Buscador Crítico)

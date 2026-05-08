@@ -502,6 +502,39 @@ app.post('/api/services/start', async (req, res) => {
     // Usar contexto del usuario o el del modelo por defecto
     const contextSize = context || model.context;
 
+    // Selección inteligente de motor según el modelo (v2.0 Era Semántica)
+    const isGemma4 = model.path.toLowerCase().includes('gemma-4') || model.path.toLowerCase().includes('mtp');
+    const isQwen35B = model.path.toLowerCase().includes('qwen') || model.path.toLowerCase().includes('35b');
+
+    let llmPath = path.join(HOME, 'llama-cpp-official');
+    if (isGemma4) llmPath = path.join(HOME, 'llama-cpp-atomic');
+    else if (model.engine === "turboquant" || isQwen35B) llmPath = path.join(HOME, 'llama-cpp-turboquant');
+
+    // Flags optimizadas para 8GB VRAM (Consistentes con llama-mercure-35b.sh)
+    const llmArgs = [
+        "-m", model.path, 
+        "-fa", "on", 
+        "-ngl", "99", 
+        "--numa", "distribute",
+        "--cache-type-k", "q4_0", 
+        "--cache-type-v", "q4_0",
+        "-c", contextSize.toString(), 
+        "--host", "0.0.0.0", 
+        "--port", "8080",
+        "--threads", "8"
+    ];
+
+    // Lógica específica para Gemma 4 (MTP + MoE Offloading)
+    if (isGemma4) {
+        llmArgs.push("--spec-type", "mtp", "--draft", "4", "-ncmoe", "24");
+        console.log("[Orquestador] 🧠 Detectado Gemma 4: Activando motor AtomicBot + MTP (ncmoe 24)");
+    } 
+    // Lógica específica para Qwen/35B (MoE Offloading)
+    else if (isQwen35B) {
+        llmArgs.push("-ncmoe", "30");
+        console.log("[Orquestador] 🏗️ Detectado Qwen/35B: Activando MoE Offloading (ncmoe 30)");
+    }
+
     try {
         console.log("[Orquestador] Limpiando procesos previos...");
         try {
@@ -515,26 +548,6 @@ app.post('/api/services/start', async (req, res) => {
 
         serviceLogs.llm = [];
         serviceLogs.bridge = [];
-
-        const llmPath = model.engine === "turboquant" ? "/home/aorsi/llama-cpp-turboquant" : "/home/aorsi/llama-cpp-official";
-        const llmArgs = ["-m", model.path, "-fa", "on", "-ngl", "99", "-c", contextSize.toString(), "--host", "0.0.0.0", "--port", "8080"];
-
-        // Re-introducidas flags de speculative decoding para motor TurboQuant
-        if (model.engine === "turboquant") {
-            llmArgs.push("-ctk", "turbo3", "-ctv", "turbo3");
-
-            // Speculative Decoding Dinámico desde UI
-            if (useDraft) {
-                try {
-                    const draftFile = fs.readdirSync(MODELS_PATH).find(f => f.toLowerCase().includes('0.5b') && f.endsWith('.gguf'));
-                    if (draftFile) {
-                        const draftPath = path.join(MODELS_PATH, draftFile);
-                        llmArgs.push("--model-draft", draftPath, "--draft", "16", "-ngld", "99", "-ctkd", "turbo3", "-ctvd", "turbo3");
-                        console.log(`[Orquestador] ⚡ Especulación activada con: ${draftFile}`);
-                    }
-                } catch (e) { }
-            }
-        }
 
         if (model.mmproj) llmArgs.push("--mmproj", model.mmproj);
 

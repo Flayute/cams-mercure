@@ -68,9 +68,31 @@ const NexusHub = ({ onSelect }) => {
                     <h1>NOCHE</h1>
                     <p>UMA ENGINE // MUSIC ANALYSIS</p>
                     <div className="nexus-status">
-                        <div className={`status-dot ${piStatus === 'offline' ? 'offline' : ''}`}></div>
+                        <div className={`status-dot ${piStatus === 'offline' ? 'offline' : ''}`} ></div>
                         RPi 500: {piStatus.toUpperCase()}
                     </div>
+                </div>
+            </div>
+
+            {/* LADO INFERIOR: COACH PERSONAL */}
+            <div className="nexus-side side-coach" onClick={() => onSelect('coach')}>
+                <div className="nexus-bg-effect"></div>
+                <div className="nexus-content">
+                    <h1>COACH</h1>
+                    <p>CAMS MERCURE // ASISTENCIA PERSONAL</p>
+                    <div className="nexus-status">
+                        <div className="status-dot"></div>
+                        ONLINE
+                    </div>
+                    <button 
+                        className="nexus-lab-btn"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onSelect('coach');
+                        }}
+                    >
+                        🧠 COACH PERSONAL
+                    </button>
                 </div>
             </div>
         </div>

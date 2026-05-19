@@ -236,14 +236,15 @@ const AgentConsole = ({ agent, setAgent, state, updateState, isQuerying, setIsQu
         fetchSessionStatus();
     };
 
-    const handleDiscardSession = async () => {
-        if (!confirm("¿Seguro que quieres descartar el Wiki efímero de esta sesión?")) return;
+    const handleDiscardSession = async (silent = false) => {
+        if (!silent && !confirm("¿Seguro que quieres iniciar un nuevo chat y borrar la memoria de esta sesión?")) return;
         try {
             await fetch(`http://${window.location.hostname}:3001/api/session/discard`, { method: 'POST' });
             setSessionActive(false);
-            alert("🧹 Memoria de sesión limpiada.");
+            updateState({ response: "", lastQuery: "", metrics: null });
+            if (!silent) alert("🧹 Consola y memoria reseteadas.");
         } catch (e) {
-            alert("❌ Error al descartar");
+            if (!silent) alert("❌ Error al limpiar");
         }
     };
 
@@ -508,16 +509,27 @@ const AgentConsole = ({ agent, setAgent, state, updateState, isQuerying, setIsQu
                         <span style={{ color: thinking ? '#8e44ad' : 'inherit', fontWeight: thinking ? 'bold' : 'normal' }}>🧠 Thinking</span>
                     </label>
 
-                    {sessionActive && (
-                        <div className="session-controls fade-in" style={{ display: 'flex', gap: '5px' }}>
-                            <button onClick={handleDiscardSession} className="btn-start" style={{ background: '#f44336', padding: '0.3rem 0.6rem', fontSize: '0.7rem' }}>
-                                🗑️ Descartar
+                    <div className="session-controls" style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                            onClick={() => handleDiscardSession(false)} 
+                            className="btn-start" 
+                            style={{ background: '#e74c3c', padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
+                            title="Limpia la pantalla y borra la memoria efímera"
+                        >
+                            🧹 Nuevo Chat
+                        </button>
+                        
+                        {sessionActive && (
+                            <button 
+                                onClick={handleIndexSession} 
+                                className="btn-start" 
+                                style={{ background: '#4a6741', padding: '0.4rem 0.8rem', fontSize: '0.75rem' }} 
+                                title="Fija esta conversación en la Wiki persistente"
+                            >
+                                🧠 Fijar Memoria
                             </button>
-                            <button onClick={handleIndexSession} className="btn-start" style={{ background: '#4a6741', padding: '0.3rem 0.6rem', fontSize: '0.7rem' }} title="Mueve esta sesión a la Wiki persistente y la indexa inmediatamente">
-                                🧠 Fijar en Memoria
-                            </button>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
 

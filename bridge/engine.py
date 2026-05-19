@@ -43,11 +43,19 @@ class FederatedQueryEngine:
     def __init__(self,
                  wiki_index_path=None,
                  response_path=None,
-                 llm_url="http://localhost:8080/v1",
-                 model="local-model"):
+                 llm_url=None,
+                 model=None,
+                 api_key=None):
         self.wiki_index_path = wiki_index_path or WIKI_INDEX
         self.response_path = response_path or RESPONSE_PATH
-        self.llm = LLMClient(base_url=llm_url, model=model)
+        
+        # Priorizar variables de entorno o valores por defecto (Gemini)
+        llm_url = llm_url or os.environ.get("MERCURE_LLM_URL", "https://generativelanguage.googleapis.com/v1beta/openai")
+        model = model or os.environ.get("MERCURE_LLM_MODEL", "gemini-2.5-flash")
+        api_key = api_key or os.environ.get("GOOGLE_API_KEY") # Usamos la misma que Hermes
+        
+        self.llm = LLMClient(base_url=llm_url, model=model, api_key=api_key)
+
         self.substrate_path = os.path.join(CAMS_BASE, 'substrate', 'substrato.db')
         self._ensure_cache_table()
         
@@ -162,25 +170,26 @@ class FederatedQueryEngine:
             print(f"[Substrato] Error en búsqueda semántica: {e}")
             return ""
 
-    def query(self, user_query, file_context="", images=None, session_mode=False, save_to_file=True, output_filename="RESPONSE.md", origin_node="Central", agent_history=""):
+    def query(self, user_query, file_context="", images=None, session_mode=False, save_to_file=True, output_filename="RESPONSE.md", origin_node="Central", agent_history="", profile=""):
         # Búsqueda semántica en la Wiki
         relevant_context = self._get_relevant_context(user_query)
         
         system_prompt = (
-            "Eres el Bibliotecario de CAMS Mercure, el Guardián de la Bóveda de Conocimiento.\n"
-            "TU FUNCIÓN: Organizar, recuperar y sintetizar la información contenida en los registros locales y adjuntos.\n\n"
+            "Eres el Bibliotecario de CAMS Mercure, el Guardián de la Bóveda de Conocimiento y de la Identidad Soberana del Usuario.\n"
+            "TU FUNCIÓN: Organizar, recuperar y sintetizar la información contenida en los registros locales (Wiki), adjuntos y el Perfil de Identidad.\n\n"
             "INSTRUCCIONES DE OPERACIÓN:\n"
-            "1. RELEVANCIA: Solo has recibido los fragmentos de la Wiki RELEVANTES para esta consulta. Úsalos como base.\n"
-            "2. CONTEXTO HÍBRIDO: Integra el [CONTEXTO DEL CASO] o [WIKI EFÍMERO] si están presentes.\n"
-            "3. DECODIFICACIÓN: Interpreta los registros Caveman con fluidez.\n"
-            "4. TONO: Profesional, servicial y adaptativo al estilo del usuario."
+            "1. RECONOCIMIENTO: El [PERFIL E IDENTIDAD] define quién es el usuario y cuál es su misión. Trátalo como el ancla de toda tu lógica.\n"
+            "2. RELEVANCIA: Solo has recibido los fragmentos de la Wiki RELEVANTES para esta consulta. Úsalos como base para tus respuestas.\n"
+            "3. CONTEXTO HÍBRIDO: Integra el [CONTEXTO DEL CASO] o [WIKI EFÍMERO] si están presentes.\n"
+            "4. DECODIFICACIÓN: Interpreta los registros Caveman (comprimidos) con fluidez, expandiendo los hechos sin inventar datos.\n"
+            "5. TONO: Profesional, servicial, profundo y alineado con la filosofía Local-First de CAMS."
         )
         
         if session_mode:
             system_prompt += " Prioriza marcadores somáticos y la Espiral de Erikson."
         
         session_ctx = load_session_memory() if session_mode else ""
-        user_prompt = f"[ADJUNTOS DE ESTA SESIÓN]:\n{file_context}\n\n{session_ctx}{agent_history}\n[CONTEXTO WIKI RELEVANTE]:\n{relevant_context}\n\n[CONSULTA]:\n{user_query}"
+        user_prompt = f"[PERFIL E IDENTIDAD]:\n{profile}\n\n[ADJUNTOS DE ESTA SESIÓN]:\n{file_context}\n\n{session_ctx}{agent_history}\n[CONTEXTO WIKI RELEVANTE]:\n{relevant_context}\n\n[CONSULTA]:\n{user_query}"
         
         res_obj = self.llm.chat(system_prompt, user_prompt, images=images)
         full_response = res_obj["content"]

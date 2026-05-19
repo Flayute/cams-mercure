@@ -5,6 +5,7 @@ import MercureConsole from './components/MercureConsole';
 import NexusHub from './components/NexusHub';
 import NexusWorkspace from './components/NexusWorkspace';
 import MarketingLab from './components/apps/MarketingLab';
+import CoachDashboard from './components/apps/CoachDashboard';
 
 function App() {
   const navigate = useNavigate();
@@ -56,6 +57,7 @@ function App() {
         <Route path="/console" element={<MercureConsole />} />
         <Route path="/nexus" element={<NexusWorkspace />} />
         <Route path="/marketing" element={<MarketingLab />} />
+        <Route path="/coach" element={<CoachDashboard />} />
       </Routes>
     </div>
   );

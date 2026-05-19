@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>R-Type Mini – Horizontal (Canvas)</title>
+<style>
+  body{margin:0;background:#000;color:#fff;font-family:Arial,sans-serif;}
+  canvas{display:block;margin:auto;background:#111;}
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+<script>
+/*=== CONFIGURACIÓN ===*/
+const CANVAS=document.getElementById('gameCanvas');
+const CTX=CANVAS.getContext('2d');
+const FPS=60;
+const PLAYER_W=30, PLAYER_H=40;
+const PLAYER_SPEED=5;
+const BULLET_W=4, BULLET_H=12;
+const BULLET_SPEED=7;
+const ENEMY_SPAWN_INTERVAL=1500; // ms
+const MAX_BULLETS=5;
+
+/*=== ESTADOS DEL JUEGO ===*/
+let keys={};
+let player={x:50,y:CANVAS.height/2-PLAYER_H/2,w:PLAYER_W,h:PLAYER_H};
+let bullets=[];
+let enemies=[];
+let lastEnemySpawn=0;
+let score=0;
+let gameOver=false;
+
+/*=== EVENTOS DE TECLADO ===*/
+window.addEventListener('keydown',e=>{keys[e.key]=true;});
+window.addEventListener('keyup',e=>{keys[e.key]=false;});
+window.addEventListener('keydown',e=>{if(e.key===' ')shoot();});
+
+/*=== ESTILOS DE ESTRELLAS */
+const stars=Array.from({length:200},()=>({x:Math.random()*CANVAS.width,y:Math.random()*CANVAS.height,size:1+Math.random()*2,dx:0.2+Math.random()*0.5}));
+function drawStars(){
+  stars.forEach(s=>{CTX.fillStyle='#fff';CTX.fillRect(s.x,s.y,s.size,s.size);});
+}
+
+/*=== FUNCIONES DE DIBUJO ===*/
+function drawPlayer(){
+  CTX.fillStyle='#0f0';
+  CTX.fillRect(player.x,player.y,player.w,player.h);
+}
+function drawBullets(){
+  CTX.fillStyle='#ff0';
+  bullets.forEach(b=>CTX.fillRect(b.x,b.y,b.w,b.h));
+}
+function drawEnemies(){
+  enemies.forEach(e=>{CTX.fillStyle=e.color||'#f00';CTX.fillRect(e.x,e.y,e.w,e.h);});
+}
+function drawScore(){
+  CTX.fillStyle='#fff';CTX.font='20px Arial';CTX.fillText('Puntos: '+score,10,20);
+}
+
+/*=== LÓGICA DEL JUEGO ===*/
+function updatePlayer(){
+  if(keys['ArrowUp']&&player.y>0)player.y-=PLAYER_SPEED;
+  if(keys['ArrowDown']&&player.y+player.h<CANVAS.height)player.y+=PLAYER_SPEED;
+}
+function updateBullets(){
+  bullets=bullets.filter(b=>b.x>-b.w);
+  bullets.forEach(b=>b.x+=BULLET_SPEED);
+}
+function updateEnemies(){
+  enemies=enemies.filter(e=>e.x>-e.w);
+  enemies.forEach(e=>e.x-=e.speed);
+}
+function spawnEnemy(){
+  const y=Math.random()*(CANVAS.height-60);
+  const type=Math.random();
+  const enemy={x:CANVAS.width,y: y,w:40,h:30,speed:1,color:'#f00'};
+  if(type<0.4){
+    enemy.w=20;enemy.h=20;enemy.speed=1.5;enemy.points=30;enemy.color='#ff0';
+  }else if(type<0.7){
+    enemy.w=60;enemy.h=60;enemy.speed=0.6;enemy.points=15;enemy.color='#f00';
+  }else{
+    enemy.w=40;enemy.h=30;enemy.speed=1;enemy.points=20;enemy.color='#ffa';
+  }
+  enemies.push(enemy);
+}
+function checkCollisions(){
+  enemies.forEach((e,idx)=>{if(rectIntersect(player,e)){gameOver=true;return;}});
+  bullets.forEach((b,bIdx)=>{enemies.forEach((e,eIdx)=>{if(rectIntersect(b,e)){enemies.splice(eIdx,1);bullets.splice(bIdx,1);score+=e.points||10;}});});
+}
+function rectIntersect(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
+function shoot(){if(bullets.length>=MAX_BULLETS)return;bullets.push({x:player.x+player.w,y:player.y+player.h/2,w:BULLET_W,h:BULLET_H});}
+
+/*=== BUCLE PRINCIPAL ===*/
+function gameLoop(timestamp){
+  if(gameOver){CTX.fillStyle='#fff';CTX.font='48px Arial';CTX.fillText('GAME OVER',CANVAS.width/2-140,CANVAS.height/2);CTX.font='24px Arial';CTX.fillText('Puntuación: '+score,CANVAS.width/2-80,CANVAS.height/2+40);return;}
+  updatePlayer();
+  updateBullets();
+  updateEnemies();
+  checkCollisions();
+  CTX.fillStyle='#000';CTX.fillRect(0,0,CANVAS.width,CANVAS.height);
+  drawStars();
+  drawPlayer();
+  drawBullets();
+  drawEnemies();
+  drawScore();
+  if(timestamp-lastEnemySpawn>ENEMY_SPAWN_INTERVAL){spawnEnemy();lastEnemySpawn=timestamp;}
+  stars.forEach(s=>{s.x-=s.dx;if(s.x<0)s.x=CANVAS.width;});
+  requestAnimationFrame(gameLoop);
+}
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

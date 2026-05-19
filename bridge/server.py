@@ -42,6 +42,9 @@ SEARXNG_URL = os.environ.get("SEARXNG_URL", "http://127.0.0.1:8001/search")
 RESP_PATH = os.path.join(CAMS_BASE, 'respuestas')
 os.makedirs(RESP_PATH, exist_ok=True)
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PERFIL_DIR = os.path.join(SCRIPT_DIR, 'perfil')
+
 
 class PDFRequest(BaseModel):
     html: str
@@ -137,14 +140,16 @@ def load_session_memory():
     return ""
 
 def load_profile():
-    # Carga el perfil del usuario (engrama de identidad)
-    profile_path = os.path.join(CAMS_BASE, 'profile.json')
-    if os.path.exists(profile_path):
-        try:
-            with open(profile_path, "r", encoding="utf-8") as f:
-                return f.read()
-        except: pass
-    return "Perfil no configurado."
+    # Carga todos los archivos .md en la carpeta perfil (Engramas de Identidad)
+    profile_content = ""
+    if os.path.exists(PERFIL_DIR):
+        for f in os.listdir(PERFIL_DIR):
+            if f.endswith(".md"):
+                try:
+                    with open(os.path.join(PERFIL_DIR, f), "r", encoding="utf-8") as f_in:
+                        profile_content += f"\n--- {f.upper()} ---\n{f_in.read()}\n"
+                except: pass
+    return profile_content if profile_content else "Perfil no configurado."
 
 def web_search(query):
     # Usando SearxNG
@@ -308,8 +313,9 @@ async def process_query(request: QueryRequest):
         if request.agent == "debate":
             profile = load_profile()
             results = web_search(request.query)
-            web_txt = "\n".join([f"- {r['title']}: {r['body']}" for r in results])
-            local_context = engine.query(request.query, save_to_file=False)
+            web_txt = "\n".join([f"- {r['title']}: {r['body']}" for r in results]) if results else "Sin resultados web."
+            # Acceso directo a fragmentos raw para mantener personalidad pura
+            local_context = engine._get_relevant_context(request.query)
             
             system_prompt = (
                 "Eres la JUNTA DE EXPERTOS de CAMS Mercure. Tu objetivo es realizar una CONSULTA MULTIDISCIPLINAR sobre el caso.\n\n"
@@ -330,7 +336,7 @@ async def process_query(request: QueryRequest):
             session_ctx = load_session_memory() if request.session_mode else ""
             client_ctx = load_client_history(request.clientId)
             history_prompt = load_agent_history("debate")
-            prompt = f"{file_context}\n[PERFIL]:\n{profile}\n[WEB]:\n{web_txt}\n[LOCAL CAVEMAN]:\n{local_context['response']}\n{session_ctx}\n{client_ctx}{history_prompt}\n\n[QUERY]:\n{request.query}"
+            prompt = f"{file_context}\n[PERFIL]:\n{profile}\n[WEB]:\n{web_txt}\n[LOCAL CAVEMAN]:\n{local_context}\n{session_ctx}\n{client_ctx}{history_prompt}\n\n[QUERY]:\n{request.query}"
             res_obj = engine.llm.chat(system_prompt, prompt, images=images)
             report = res_obj["content"]
             usage = res_obj.get("usage", {})
@@ -369,7 +375,9 @@ async def process_query(request: QueryRequest):
             return {"response": res, "agent": "explorador", "usage": usage, "duration": duration}
 
         elif request.agent == "investigador":
-            local = engine.query(request.query, save_to_file=False)
+            profile = load_profile()
+            # Acceso directo a fragmentos raw
+            local_context = engine._get_relevant_context(request.query)
             results = web_search(request.query)
             web_txt = "\n".join([f"- {r['title']}: {r['body']}" for r in results])
             
@@ -384,7 +392,7 @@ async def process_query(request: QueryRequest):
             session_ctx = load_session_memory() if request.session_mode else ""
             client_ctx = load_client_history(request.clientId)
             history_prompt = load_agent_history("investigador")
-            res_obj = engine.llm.chat(system_prompt, f"{file_context}{session_ctx}{client_ctx}{history_prompt}\n[LOCAL CAVEMAN]:\n{local['response']}\n[WEB]:\n{web_txt}\n[QUERY]:\n{request.query}", images=images)
+            res_obj = engine.llm.chat(system_prompt, f"{file_context}{session_ctx}{client_ctx}{history_prompt}\n[PERFIL]:\n{profile}\n[LOCAL CAVEMAN]:\n{local_context}\n[WEB]:\n{web_txt}\n[QUERY]:\n{request.query}", images=images)
             res = res_obj["content"]
             usage = res_obj.get("usage", {})
             duration = res_obj.get("duration", 0)
@@ -396,7 +404,7 @@ async def process_query(request: QueryRequest):
 
         elif request.agent == "arquitecto":
             profile = load_profile()
-            local_context = engine.query(request.query, save_to_file=False)
+            local_context = engine._get_relevant_context(request.query)
             results = web_search(request.query)
             web_txt = "\n".join([f"- {r['title']}: {r['body']}" for r in results]) if results else "Sin resultados web."
             
@@ -425,7 +433,7 @@ async def process_query(request: QueryRequest):
             ) + thinking_instruction
             session_ctx = load_session_memory() if request.session_mode else ""
             client_ctx = load_client_history(request.clientId)
-            res_obj = engine.llm.chat(system_prompt, f"{file_context}{session_ctx}{client_ctx}{history_prompt}\n[PERFIL]:\n{profile}\n[CONTEXTO LOCAL]:\n[CONTEXTO LOCAL CAVEMAN]:\n{local_context['response']}\n[WEB]:\n{web_txt}\n[QUERY]:\n{request.query}", images=images)
+            res_obj = engine.llm.chat(system_prompt, f"{file_context}{session_ctx}{client_ctx}{history_prompt}\n[PERFIL]:\n{profile}\n[CONTEXTO LOCAL]:\n[CONTEXTO LOCAL CAVEMAN]:\n{local_context}\n[WEB]:\n{web_txt}\n[QUERY]:\n{request.query}", images=images)
             res = res_obj["content"]
             usage = res_obj.get("usage", {})
             duration = res_obj.get("duration", 0)
@@ -437,7 +445,7 @@ async def process_query(request: QueryRequest):
 
         elif request.agent == "heraldo":
             profile = load_profile()
-            local_context = engine.query(request.query, save_to_file=False)
+            local_context = engine._get_relevant_context(request.query)
             results = web_search(request.query)
             web_txt = "\n".join([f"- {r['title']}: {r['body']}" for r in results]) if results else "Sin resultados web."
             
@@ -454,7 +462,7 @@ async def process_query(request: QueryRequest):
             ) + thinking_instruction
             session_ctx = load_session_memory() if request.session_mode else ""
             client_ctx = load_client_history(request.clientId)
-            res_obj = engine.llm.chat(system_prompt, f"{file_context}{session_ctx}{client_ctx}{history_prompt}\n[PERFIL]:\n{profile}\n[CONTEXTO LOCAL]:\n{local_context['response']}\n[WEB]:\n{web_txt}\n[QUERY]:\n{request.query}", images=images)
+            res_obj = engine.llm.chat(system_prompt, f"{file_context}{session_ctx}{client_ctx}{history_prompt}\n[PERFIL]:\n{profile}\n[CONTEXTO LOCAL]:\n{local_context}\n[WEB]:\n{web_txt}\n[QUERY]:\n{request.query}", images=images)
             res = res_obj["content"]
             usage = res_obj.get("usage", {})
             duration = res_obj.get("duration", 0)
@@ -547,8 +555,9 @@ async def process_query(request: QueryRequest):
 
         else:
             # Bibliotecario
+            profile = load_profile()
             history_prompt = load_agent_history("bibliotecario")
-            res_obj = engine.query(request.query, file_context=file_context + thinking_instruction, images=images, save_to_file=False, agent_history=history_prompt)
+            res_obj = engine.query(request.query, file_context=file_context + thinking_instruction, images=images, save_to_file=False, agent_history=history_prompt, profile=profile)
             res = res_obj["response"]
             usage = res_obj.get("usage", {})
             duration = res_obj.get("duration", 0)
@@ -593,6 +602,110 @@ async def caveman_decode(request: QueryRequest):
         return {"response": res_obj["content"], "agent": "caveman_decoder"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- COACH PERSONAL (Integrado en el Bridge) ---
+
+import sqlite3
+import time as _time
+from coach_prompts import (
+    STRATEGA_SYSTEM_PROMPT,
+    REACTIVA_SYSTEM_PROMPT,
+    MORNING_PROMPT,
+    EVENING_PROMPT,
+    WEEKLY_PROMPT,
+    BLOCKED_PROMPT,
+    SKILLS_PROMPT,
+)
+
+COACH_DB = os.path.join(CAMS_BASE, 'coach.db')
+
+def init_coach_db():
+    os.makedirs(os.path.dirname(COACH_DB), exist_ok=True)
+    conn = sqlite3.connect(COACH_DB)
+    c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS coach_interactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        alma TEXT, mode TEXT, content TEXT, response TEXT, created_at TEXT
+    )""")
+    conn.commit()
+    conn.close()
+    print("[Coach] Base de datos inicializada.")
+
+init_coach_db()
+
+class CoachRequest(BaseModel):
+    query: str
+    alma: str = "proactive"
+    mode: str = "morning"
+    context: str = ""
+    token: Optional[str] = None
+
+@app.post("/api/coach/consult")
+async def coach_consult(request: CoachRequest):
+    try:
+        profile = load_profile()
+        
+        if request.alma == "proactive":
+            system_prompt = STRATEGA_SYSTEM_PROMPT
+            ritual_prompts = {
+                "morning": MORNING_PROMPT,
+                "evening": EVENING_PROMPT,
+                "weekly": WEEKLY_PROMPT,
+                "blocked": BLOCKED_PROMPT,
+                "skills": SKILLS_PROMPT,
+                "general": ""
+            }
+            ritual_intro = ritual_prompts.get(request.mode, "")
+        else:
+            system_prompt = REACTIVA_SYSTEM_PROMPT
+            ritual_intro = ""
+
+        user_prompt = f"[PERFIL]:\n{profile}\n\n"
+        if ritual_intro:
+            user_prompt += f"[RITUAL {request.mode.upper()}]:\n{ritual_intro}\n\n"
+        user_prompt += f"[QUERY]:\n{request.query}"
+
+        start = _time.time()
+        res_obj = engine.llm.chat(system_prompt, user_prompt)
+        duration = _time.time() - start
+        
+        res = res_obj.get("content", "")
+        usage = res_obj.get("usage", {})
+
+        # Persistir en SQLite
+        try:
+            conn = sqlite3.connect(COACH_DB)
+            conn.execute(
+                "INSERT INTO coach_interactions (alma, mode, content, response, created_at) VALUES (?, ?, ?, ?, ?)",
+                (request.alma, request.mode, request.query, res, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            )
+            conn.commit()
+            conn.close()
+        except Exception as db_err:
+            print(f"[Coach DB] Error guardando: {db_err}")
+
+        with open(os.path.join(RESP_PATH, "COACH.md"), "w", encoding="utf-8") as f:
+            f.write(f"# 🏋️ Coach Personal ({request.alma})\n\n{res}")
+
+        return {"response": res, "agent": "coach", "usage": usage, "duration": duration}
+
+    except Exception as e:
+        print(f"[Coach Error] {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/coach/history")
+async def coach_history(limit: int = 10):
+    try:
+        conn = sqlite3.connect(COACH_DB)
+        rows = conn.execute(
+            "SELECT alma, mode, content, response, created_at FROM coach_interactions ORDER BY created_at DESC LIMIT ?",
+            (limit,)
+        ).fetchall()
+        conn.close()
+        return [{"alma": r[0], "mode": r[1], "content": r[2], "response": r[3], "timestamp": r[4]} for r in rows]
+    except Exception as e:
+        return []
+
 
 class WikiIndexRequest(BaseModel):
     folder: str

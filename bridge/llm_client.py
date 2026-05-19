@@ -3,17 +3,18 @@ import json
 import os
 
 class LLMClient:
-    def __init__(self, base_url="http://localhost:11434/v1", model="qwen2.5-coder-7b-instruct"):
+    def __init__(self, base_url="http://localhost:11434/v1", model="qwen2.5-coder-7b-instruct", api_key=None):
         """
-        Cliente para interactuar con el modelo local. 
-        Compatible con Ollama, llama.cpp (server) o vLLM.
+        Cliente para interactuar con el modelo. 
+        Compatible con Ollama, OpenAI, Gemini (OpenAI mode), etc.
         """
         self.base_url = base_url
         self.model = model
+        self.api_key = api_key
 
     def chat(self, system_prompt, user_prompt, images=None, temperature=0.1, max_tokens=None):
         import time
-        # Si no hay imágenes, enviamos el contenido como string puro para evitar errores 400 en algunos motores
+        # Si no hay imágenes, enviamos el contenido como string puro
         if not images:
             content = user_prompt
         else:
@@ -25,6 +26,7 @@ class LLMClient:
                 })
 
         payload = {
+            "model": self.model,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": content}
@@ -33,9 +35,13 @@ class LLMClient:
             "max_tokens": max_tokens if max_tokens else 4096
         }
         
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
         start_time = time.time()
         try:
-            response = requests.post(f"{self.base_url}/chat/completions", json=payload, timeout=900)
+            response = requests.post(f"{self.base_url.rstrip('/')}/chat/completions", json=payload, headers=headers, timeout=900)
             response.raise_for_status()
             res_json = response.json()
             duration = time.time() - start_time
@@ -45,6 +51,7 @@ class LLMClient:
                 "usage": res_json.get('usage', {}),
                 "duration": duration
             }
+
         except Exception as e:
             return {
                 "content": f"Error llamando al LLM: {str(e)}",

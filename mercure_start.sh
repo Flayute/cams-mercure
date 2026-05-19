@@ -17,11 +17,21 @@ echo -e "${BLUE}==============================================${NC}"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 mkdir -p "$SCRIPT_DIR/logs"
 
-# 1. Encender el Cerebro (LLM)
-echo -e "${YELLOW}[1/6] Seleccionando y encendiendo el Cerebro (LLM)...${NC}"
-bash "$SCRIPT_DIR/scripts/llama-mercure-35b.sh"
+# 1. Cargar Configuración (.env)
+echo -e "${YELLOW}[1/6] Cargando configuración desde .env...${NC}"
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    set -a
+    source "$SCRIPT_DIR/.env"
+    set +a
+    echo -e "${GREEN}    ✅ Configuración cargada.${NC}"
+else
+    echo -e "${RED}    ⚠️ No se encontró archivo .env. Usando valores por defecto.${NC}"
+fi
 
-# 2. Limpieza de Puertos
+# 2. Encender el Cerebro (LLM) - Omitido si usamos Gemini
+# echo -e "${YELLOW}[2/6] Seleccionando y encendiendo el Cerebro (LLM)...${NC}"
+# bash "$SCRIPT_DIR/scripts/llama-mercure-35b.sh"
+
 echo -e "${YELLOW}[2/6] Limpiando procesos de red antiguos...${NC}"
 fuser -k 3001/tcp 8000/tcp 2>/dev/null
 

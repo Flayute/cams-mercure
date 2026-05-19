@@ -81,37 +81,6 @@ const TOPICS = [
 ];
 
 // --- PLANIFICACIÓN (CAMS v3) ---
-
-// Ágora Diaria (10:00 AM)
-// cron.schedule('0 10 * * *', async () => {
-//     const topic = TOPICS[Math.floor(Math.random() * TOPICS.length)];
-//     console.log(`[Planificador] Iniciando Ágora sobre: ${topic}`);
-//     await notifyAllStudents(nodesConfig.nodes, `🏛️ El Ágora comenzará en 5 min. Tema: ${topic}`);
-//     
-//     setTimeout(() => {
-//         startAgora(topic);
-//     }, 5 * 60 * 1000);
-// });
-
-// Reporte Semanal (Domingos 23:00)
-// cron.schedule('0 23 * * 0', async () => {
-//     console.log("[Planificador] Generando síntesis semanal de aprendizaje...");
-//     try {
-//         const files = fs.readdirSync(AGORA_LOGS_PATH).filter(f => f.endsWith('.md'));
-//         let synthesis = `# 📊 Síntesis Semanal de Aprendizaje Federado\n\n`;
-//         files.forEach(f => {
-//             const content = fs.readFileSync(path.join(AGORA_LOGS_PATH, f), 'utf8');
-//             synthesis += `## Resumen de: ${f}\n${content.substring(0, 500)}...\n\n`;
-//         });
-//         fs.writeFileSync(path.join(BLOG_PATH, '03-aprendizaje-federado/reporte-semanal.md'), synthesis);
-//         await notifyDevice(nodesConfig.nodes[0].kde_id, "✅ Reporte semanal generado en Obsidian.");
-//     } catch (e) {
-//         console.error("Error en reporte semanal:", e.message);
-//     }
-// });
-
-// Learning Bridge: Destilación Maestro-Alumno (Cada 4 horas)
-// cron.schedule('0 */4 * * *', async () => {
 //     const activeNodes = nodesConfig.nodes.filter(n => n.ip && n.ip !== "100.X.Y.Z");
 //     if (activeNodes.length === 0) return;
 //     
@@ -419,29 +388,20 @@ function getAvailableModels() {
     files.forEach(file => {
         if (file.endsWith('.gguf') && !file.includes('mmproj')) {
             const id = file.replace('.gguf', '').toLowerCase().replace(/[^a-z0-9]/g, '_');
-            const isTurbo = file.match(/qwen|llama/i);
-            const isGemma = file.match(/gemma/i);
-
-            // Buscar mmproj relacionado para Gemma
-            let mmprojPath = null;
-            if (isGemma) {
-                const mmprojFile = files.find(f => f.includes('mmproj') && f.includes(file.split('-')[0]));
-                if (mmprojFile) mmprojPath = path.join(MODELS_PATH, mmprojFile);
-            }
+            const is35B = file.match(/35b/i);
 
             models[id] = {
                 name: file.replace('.gguf', '').split(/[-_.]/).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' '),
                 path: path.join(MODELS_PATH, file),
-                engine: isTurbo ? "turboquant" : "official",
-                context: isTurbo ? 32768 : 65536,
-                mmproj: mmprojPath
+                engine: "llama-stable",
+                context: is35B ? 80000 : 32768
             };
         }
     });
 
     // Fallback si no hay modelos para que la UI no rompa
     if (Object.keys(models).length === 0) {
-        models["no_model"] = { name: "⚠️ Ningún modelo detectado", path: "", engine: "official", context: 0 };
+        models["no_model"] = { name: "⚠️ Ningún modelo detectado", path: "", engine: "llama-stable", context: 0 };
     }
     return models;
 }
@@ -502,37 +462,40 @@ app.post('/api/services/start', async (req, res) => {
     // Usar contexto del usuario o el del modelo por defecto
     const contextSize = context || model.context;
 
-    // Selección inteligente de motor según el modelo (v2.0 Era Semántica)
-    const isGemma4 = model.path.toLowerCase().includes('gemma-4') || model.path.toLowerCase().includes('mtp');
-    const isQwen35B = model.path.toLowerCase().includes('qwen') || model.path.toLowerCase().includes('35b');
+    // Motor único: llama-stable
+    const llmPath = path.join(HOME, 'llama-stable');
+    const is35B = model.path.toLowerCase().includes('35b');
 
-    let llmPath = path.join(HOME, 'llama-cpp-official');
-    if (isGemma4) llmPath = path.join(HOME, 'llama-cpp-atomic');
-    else if (model.engine === "turboquant" || isQwen35B) llmPath = path.join(HOME, 'llama-cpp-turboquant');
-
-    // Flags optimizadas para 8GB VRAM (Consistentes con llama-mercure-35b.sh)
-    const llmArgs = [
-        "-m", model.path, 
-        "-fa", "on", 
-        "-ngl", "99", 
-        "--numa", "distribute",
-        "--cache-type-k", "q4_0", 
-        "--cache-type-v", "q4_0",
-        "-c", contextSize.toString(), 
-        "--host", "0.0.0.0", 
-        "--port", "8080",
-        "--threads", "8"
-    ];
-
-    // Lógica específica para Gemma 4 (MTP + MoE Offloading)
-    if (isGemma4) {
-        llmArgs.push("--spec-type", "mtp", "--draft", "4", "-ncmoe", "24");
-        console.log("[Orquestador] 🧠 Detectado Gemma 4: Activando motor AtomicBot + MTP (ncmoe 24)");
-    } 
-    // Lógica específica para Qwen/35B (MoE Offloading)
-    else if (isQwen35B) {
-        llmArgs.push("-ncmoe", "30");
-        console.log("[Orquestador] 🏗️ Detectado Qwen/35B: Activando MoE Offloading (ncmoe 30)");
+    // Configuración de flags según perfil del modelo
+    let llmArgs;
+    if (is35B) {
+        // Perfil 35B MoE — Configuración probada y optimizada
+        llmArgs = [
+            "-m", model.path,
+            "-ngl", "99",
+            "-ncmoe", "30",
+            "-c", contextSize.toString(),
+            "-fa", "on",
+            "-np", "1",
+            "--cache-type-k", "q4_0",
+            "--cache-type-v", "q4_0",
+            "--host", "0.0.0.0",
+            "--port", "8080"
+        ];
+        console.log(`[Orquestador] 🏗️ Perfil 35B MoE: ngl=99, ncmoe=30, contexto=${contextSize}`);
+    } else {
+        // Perfil estándar — Sin GPU offloading
+        llmArgs = [
+            "-m", model.path,
+            "-fa", "on",
+            "-np", "1",
+            "-c", contextSize.toString(),
+            "--cache-type-k", "q4_0",
+            "--cache-type-v", "q4_0",
+            "--host", "0.0.0.0",
+            "--port", "8080"
+        ];
+        console.log(`[Orquestador] 🎯 Perfil estándar: sin ngl, contexto=${contextSize}`);
     }
 
     try {
@@ -549,11 +512,8 @@ app.post('/api/services/start', async (req, res) => {
         serviceLogs.llm = [];
         serviceLogs.bridge = [];
 
-        if (model.mmproj) llmArgs.push("--mmproj", model.mmproj);
-
         const llmProcess = spawn(`${llmPath}/build/bin/llama-server`, llmArgs, {
-            cwd: llmPath,
-            env: { ...process.env, TURBO_LAYER_ADAPTIVE: model.engine === "turboquant" ? "1" : "0" }
+            cwd: llmPath
         });
 
         llmProcess.stdout.on('data', (d) => addLog('llm', d));
@@ -583,6 +543,31 @@ app.post('/api/services/stop', (req, res) => {
 });
 
 // --- AGENTES Y BLOG ---
+
+// --- COACH PERSONAL (Proxy al Bridge) ---
+
+app.post('/api/coach/consult', async (req, res) => {
+    try {
+        const response = await axios.post(CAMS_BRIDGE_URL + "/api/coach/consult", req.body, {
+            timeout: 300000
+        });
+        res.json(response.data);
+    } catch (error) {
+        console.error("[Coach Proxy] Error:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/coach/history', async (req, res) => {
+    try {
+        const response = await axios.get(CAMS_BRIDGE_URL + "/api/coach/history", {
+            params: req.query
+        });
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 app.post('/api/blog/save', (req, res) => {
     try {

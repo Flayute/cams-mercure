@@ -1,0 +1,365 @@
+/* CoachDashboard.css - Interfaz móvil-first para el Coach Personal */
+
+/* Variables de diseño (tema CAMS Mercure) */
+:root {
+  --cams-green: #4a6741;
+  --cams-green-light: #e8f0e8;
+  --cams-green-dark: #354f2e;
+  --cams-text: #2c3e50;
+  --cams-text-light: #666;
+  --cams-bg: #f8f9f8;
+  --cams-border: #e8f0e8;
+  --cams-accent: #8e44ad;
+  --cams-error: #e74c3c;
+  --cams-success: #27ae60;
+  --cams-warning: #f39c12;
+}
+
+/* Layout principal */
+.coach-dashboard {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--cams-text);
+  background-color: var(--cams-bg);
+}
+
+/* Encabezado */
+.coach-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--cams-border);
+  background: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.coach-header h1 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--cams-green);
+  letter-spacing: -0.025em;
+}
+
+.coach-header small {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  color: var(--cams-text-light);
+  font-weight: 500;
+}
+
+/* Toggle de modo principal */
+.mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--cams-border);
+  background: white;
+  overflow-x: auto;
+}
+
+.mode-toggle-label {
+  flex: 1;
+  min-width: 80px;
+  padding: 0.5rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid #ddd;
+  transition: all 0.3s;
+  background: #f5f5f5;
+  color: var(--cams-text-light);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.mode-toggle-label.active {
+  background: var(--cams-green);
+  color: white;
+  border-color: var(--cams-green);
+  box-shadow: 0 2px 4px rgba(74, 103, 65, 0.2);
+}
+
+/* Sub-modos (solo para Estratega) */
+.sub-mode-selector {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--cams-border);
+  background: white;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.sub-mode-selector::-webkit-scrollbar {
+  display: none;
+}
+
+.sub-mode-label {
+  flex: 1;
+  min-width: 60px;
+  padding: 0.4rem 0.6rem;
+  border-radius: 15px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  border: 1px solid #ddd;
+  color: var(--cams-text-light);
+  background: #fafafa;
+  white-space: nowrap;
+  transition: all 0.3s;
+}
+
+.sub-mode-label.active {
+  background: var(--cams-green-light);
+  color: var(--cams-green-dark);
+  border-color: var(--cams-green);
+  font-weight: 600;
+}
+
+/* Área de respuesta */
+.response-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  scroll-behavior: smooth;
+}
+
+.context-bar {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  background: var(--cams-green-light);
+  border-radius: 10px;
+  font-size: 0.65rem;
+  color: var(--cams-green-dark);
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+.response-content {
+  line-height: 1.6;
+  font-size: 0.95rem;
+  color: var(--cams-text);
+}
+
+.response-content p {
+  margin: 0 0 0.8rem 0;
+}
+
+.response-content strong {
+  color: var(--cams-green);
+  font-weight: 600;
+}
+
+/* Mensaje de bienvenida */
+.welcome-message {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--cams-text-light);
+}
+
+.welcome-message h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  color: var(--cams-green);
+}
+
+.welcome-message p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* Área de entrada */
+.input-area {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-top: 1px solid var(--cams-border);
+  background: white;
+}
+
+.input-area textarea {
+  flex: 1;
+  padding: 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  resize: none;
+  max-height: 120px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.input-area textarea:focus {
+  border-color: var(--cams-green);
+  background: var(--cams-green-light);
+}
+
+.input-area textarea::placeholder {
+  color: #aaa;
+}
+
+.send-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-send {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: var(--cams-green);
+  color: white;
+}
+
+.btn-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-send:active {
+  transform: scale(0.95);
+}
+
+.btn-stop {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: var(--cams-error);
+  color: white;
+}
+
+.btn-stop:hover {
+  background: #c0392b;
+}
+
+/* Botones rápidos de ritual */
+.quick-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  flex-wrap: wrap;
+  background: white;
+  border-top: 1px solid var(--cams-border);
+}
+
+.quick-action-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: white;
+  color: var(--cams-text);
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.quick-action-btn:hover {
+  background: var(--cams-green-light);
+  border-color: var(--cams-green);
+  color: var(--cams-green-dark);
+}
+
+.quick-action-btn:active {
+  transform: scale(0.95);
+}
+
+/* Footer */
+.coach-footer {
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--cams-border);
+  background: white;
+  text-align: center;
+  color: var(--cams-text-light);
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+/* Animaciones */
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .coach-header h1 {
+    font-size: 1rem;
+  }
+
+  .mode-toggle-label {
+    min-width: 60px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.65rem;
+  }
+
+  .sub-mode-label {
+    min-width: 50px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.65rem;
+  }
+
+  .input-area textarea {
+    padding: 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  .btn-send, .btn-stop {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .quick-action-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* Accesibilidad */
+@media (prefers-reduced-motion: reduce) {
+  .fade-in {
+    animation: none;
+  }
+
+  * {
+    transition: none !important;
+  }
+}
+
+/* Alto contraste */
+@media (prefers-contrast: high) {
+  :root {
+    --cams-bg: #fff;
+    --cams-text: #000;
+  }
+
+  .mode-toggle-label {
+    border-width: 2px;
+  }
+
+  .sub-mode-label {
+    border-width: 2px;
+  }
+}

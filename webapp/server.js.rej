@@ -1,0 +1,13 @@
+--- webapp/server.js
++++ webapp/server.js
+@@ -705,7 +705,9 @@
+     try {
+         const response = await axios.post(CAMS_BRIDGE_URL + "/api/render/pdf", req.body, {
+             responseType: 'arraybuffer',
+-            headers: { 'Content-Type': 'application/json' }
++            headers: { 'Content-Type': 'application/json' },
++            maxBodyLength: Infinity,
++            maxContentLength: Infinity
+         });
+         res.set('Content-Type', 'application/pdf');
+         res.send(response.data);

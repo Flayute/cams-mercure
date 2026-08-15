@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Tetris Sencillo</title>
+    <style>
+        body {font-family:Arial,sans-serif;background:#333;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;}
+        #game{position:relative;width:320px;height:460px;border:1px solid #555;}
+        #board{position:relative;width:100%;height:460px;background:#555;}
+        .cell{width:30px;height:30px;border-bottom:1px solid #444;display:flex;justify-content:center;align-items:center;font-size:30px;}
+        .line{height:60px;background:#888;display:flex;justify-content:space-around;}
+        .line .block{width:20px;height:20px;background:#f1c40f;}
+        .arrows{position:absolute;top:10px;left:50%;transform:translateX(-50%);color:#fff;font-size:30px;}
+    </style>
+</head>
+<body>
+
+<div id="game">
+    <div id="board"></div>
+    <div class="arrows" id="arrows">--</div>
+</div>
+
+<script>
+/* ---------- CONFIGURACIÓN ---------- */
+const colors = ['#f1c40f','#e74c3c','#3498db','#2ecc71','#9b59b6','#34495e'];
+const keyMap = {
+    ArrowLeft:  'ArrowLeft',
+    ArrowRight: 'ArrowRight',
+    ArrowDown:  'ArrowDown',
+    Space:      'Enter',
+    Escape:     'Escape'
+};
+
+/* ---------- ELEMENTOS ---------- */
+const grid  = document.getElementById('board');
+const arrows = document.getElementById('arrows');
+
+/* ---------- ESTADO GLOBAL ---------- */
+// Inicializa el arreglo de filas (pistas vacías) y la posición actual
+const state = { col: 0, row: 0 };
+function init() {
+    let rows = [];
+    for (let i = 0; i < 10; i++) {
+        let line = document.createElement('div');
+        for (let j = 0; j < 4; j++) line.appendChild(grid.querySelector('.cell'));
+        lines[i].appendChild(line);
+    }
+    return { rows, col: state.col, row: state.row };
+}
+function stateObj = { ...state };
+let { col, row } = init();   // <-- ahora col y row existen
+
+/* ---------- FUNCIONES AUXILIARES ---------- */
+const lines = [];
+function initLines() {
+    lines = Array.from({ length: 10 }, () => Array(4).fill(null));
+}
+initLines();
+
+/* ---------- Lógica principal ---------- */
+function removeCell(colIdx) {
+    const cells = grid.querySelector('.cell');
+    cells.children[colIdx].innerHTML = '';
+    state.col--;
+}
+
+function placeBlock() {
+    while (grid.children[0].querySelectorAll('.cell')
+        .some(c => c.innerText !== '')) {
+        row++;
+        if (row > 9) return;
+        grid.children[0].appendChild(stateObj.rows[row]);
+    }
+    const newRow = document.createElement('div');
+    newRow.className = 'line';
+    for (let j = 0; j < 4; j++) {
+        const cell = grid.querySelector('.cell')[j];
+        if (cell.innerText !== '') {
+            newRow.appendChild(stateObj.rows[row + 1].children[cell.offsetLeft / 30]);
+        }
+    }
+    stateObj.rows.push(newRow);
+    grid.children[0].appendChild(newRow);
+}
+
+function clearLines() { for (const l of lines) l.innerHTML = ''; }
+function removeEmptyLines() { while (stateObj.rows[stateObj.rows.length-1].children.length === 0) stateObj.rows.pop(); }
+function checkLines() {
+    for (let i = 0; i < stateObj.rows.length; i++) {
+        for (let j = 0; j < 4; j++) {
+            if (stateObj.rows[i].children[j].innerText === '') return;
+        }
+    }
+    if (lines[0].children.length === 0) clearLines();
+}
+function updateArrows() {
+    const left  = state.col > 0 ? '←' : '';
+    const right = state.col < 2 ? '→' : '';
+    const down  = state.row + 1 < 9 ? '↓' : '';
+    arrows.innerText = `${left}${right}${down}`;
+}
+
+/* ---------- EVENT LISTENERS ---------- */
+window.addEventListener('keydown', e => {
+    if (keyMap[e.code]) keys[e.code] = true;
+};
+document.addEventListener('keydown', onKey);
+const arrowsDiv = document.getElementById('arrows');
+updateArrows();
+
+/* ---------- BUPEGMA ---------- */
+const gameLoop = setInterval(() => {
+    placeBlock();
+    removeEmptyLines();
+    checkLines();
+    updateArrows();
+}, 300);
+
+</script>
+</body>
+</html>

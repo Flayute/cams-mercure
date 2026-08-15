@@ -105,7 +105,8 @@ class FederatedQueryEngine:
         try:
             conn = sqlite3.connect(self.substrate_path)
             cursor = conn.cursor()
-            cursor.execute("SELECT summary, embedding FROM caveman_cache WHERE file_path = ? AND mtime = ?", (file_path, current_mtime))
+            # Usamos int() para evitar problemas de precisión de punto flotante en la comparación de mtime
+            cursor.execute("SELECT summary, embedding FROM caveman_cache WHERE file_path = ? AND mtime = ?", (file_path, int(current_mtime)))
             row = cursor.fetchone()
             conn.close()
             return row if row else None
@@ -117,8 +118,9 @@ class FederatedQueryEngine:
             conn = sqlite3.connect(self.substrate_path)
             cursor = conn.cursor()
             emb_blob = sqlite3.Binary(embedding.astype(np.float32).tobytes()) if embedding is not None else None
+            # Guardamos el mtime como entero para consistencia
             cursor.execute("INSERT OR REPLACE INTO caveman_cache (file_path, mtime, summary, embedding) VALUES (?, ?, ?, ?)", 
-                           (file_path, mtime, summary, emb_blob))
+                           (file_path, int(mtime), summary, emb_blob))
             conn.commit()
             conn.close()
         except Exception as e:

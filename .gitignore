@@ -36,3 +36,9 @@ respuestas/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Pruebas y artefactos sueltos
+test_pdf.py
+out.pdf
+patch.diff
+_scratch/

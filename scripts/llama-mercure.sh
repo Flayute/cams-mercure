@@ -52,11 +52,11 @@ fi
 if [[ "$SELECTED_NAME" =~ 35[Bb] ]]; then
     echo "  🏗️  Perfil 35B MoE activado"
     CONTEXT=80000
-    FLAGS="-ngl 99 -ncmoe 30 -fa on -np 1 --cache-type-k q4_0 --cache-type-v q4_0"
+    FLAGS="-ngl 9999 -ncmoe 27 -fa on -np 1 --spec-type ngram-mod --spec-ngram-mod-n-match 24 --spec-draft-n-min 12 --spec-draft-n-max 48 --no-mmap  --cache-type-k q8_0 --cache-type-v q4_0"
 else
     echo "  🎯 Perfil estándar activado"
-    CONTEXT=32768
-    FLAGS="-fa on -np 1 --cache-type-k q4_0 --cache-type-v q4_0"
+    CONTEXT=8000
+    FLAGS="-fa on -np 1  --jinja --chat-template-file ~/nex-n2-chat-template.jinja --cache-type-k q8_0 --no-mmap --cache-type-v q4_0 --spec-type ngram-mod --spec-ngram-mod-n-match 24 --spec-draft-n-min 12 --spec-draft-n-max 48"
 fi
 
 # 3. LANZAR

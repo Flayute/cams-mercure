@@ -54,12 +54,12 @@ fi
 # ── CONFIGURACIÓN SEGÚN PERFIL ──────────────────────────────
 if [[ "$SELECTED_NAME" =~ 35[Bb] ]]; then
     echo "  🏗️  Perfil 35B MoE activado"
-    CONTEXT=80000
-    FLAGS="-ngl 99 -ncmoe 30 -fa on -np 1 --cache-type-k q4_0 --cache-type-v q4_0"
-else
+    CONTEXT=128000
+    FLAGS="-ncmoe 31 --spec-type ngram-mod -ngl 9999 -t 8 -fa on -np 1 --repeat-penalty 1.1 --presence-penalty 0.0 --mmap --parallel 1 -tb 8  -b 1500 -ub 600 --temperature 1.0 --top_p 0.95 --top_k 64 --cache-type-k q4_0 --cache-type-v q4_0 --spec-draft-n-max 4 --reasoning off"
+	else
     echo "  🎯 Perfil estándar activado"
-    CONTEXT=32768
-    FLAGS="-fa on -np 1 --cache-type-k q4_0 --cache-type-v q4_0"
+    CONTEXT=128000
+    FLAGS="-fa on -ncmoe 31 -np 1 --mmap -t 5   --chat-template-file /home/aorsi/Documents/CAMS-Mercure/models/nex-n2-chat-template.jinja --spec-draft-n-max 12 --parallel 1 -fit on -tb 8 --temperature 1.0 --top_p 0.95 --top_k 64   --cache-type-k q4_0  --cache-type-v q4_0"
 fi
 
 echo ""

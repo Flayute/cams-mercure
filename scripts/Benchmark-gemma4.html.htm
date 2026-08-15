@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS Performance Benchmark</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background-color: #2d2d2d;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+        h1 { color: #00ff88; }
+        .btn {
+            background-color: #00ff88;
+            color: #1a1a1a;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.3s;
+        }
+        .btn:hover { background-color: #00cc6e; }
+        .btn:active { transform: scale(0.95); }
+        .btn:disabled { background-color: #555; cursor: not-allowed; }
+
+        .results {
+            margin-top: 30px;
+            text-align: left;
+        }
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #444;
+        }
+        .result-item:last-child { border-bottom: none; }
+        .value { font-family: monospace; color: #00ff88; font-size: 1.1rem; }
+
+        #status {
+            margin-top: 15px;
+            font-style: italic;
+            color: #ffaa00;
+            height: 20px;
+        }
+
+        /* Contenedor oculto para la prueba de DOM */
+        #dom-test-area {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Benchmark JS</h1>
+        <p>Mide la potencia de tu navegador</p>
+
+        <button class="btn" id="startBtn">Iniciar Prueba</button>
+
+        <div id="status"></div>
+
+        <div class="results">
+            <div class="result-item">
+                <span>Cálculo Matemático (CPU):</span>
+                <span class="value" id="cpu-res">-</span>
+            </div>
+            <div class="result-item">
+                <span>Manipulación DOM:</span>
+                <span class="value" id="dom-res">-</span>
+            </div>
+            <div class="result-item">
+                <span>Gestión de Memoria:</span>
+                <span class="value" id="mem-res">-</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Área para pruebas de DOM -->
+    <div id="dom-test-area"></div>
+
+    <script>
+        const startBtn = document.getElementById('startBtn');
+        const status = document.getElementById('status');
+        const domArea = document.getElementById('dom-test-area');
+
+        // Formatear tiempo
+        const formatTime = (ms) => ms.toFixed(2) + " ms";
+
+        // 1. TEST DE CPU: Cálculo de Fibonacci (Recursión pesada)
+        function testCPU() {
+            const start = performance.now();
+            function fibonacci(n) {
+                if (n <= 1) return n;
+                return fibonacci(n - 1) + fibonacci(n - 2);
+            }
+            fibonacci(40); // Operación intensiva
+            const end = performance.now();
+            return end - start;
+        }
+
+        // 2. TEST DE DOM: Crear y eliminar 5000 elementos
+        function testDOM() {
+            const start = performance.now();
+            for (let i = 0; i < 5000; i++) {
+                const div = document.createElement('div');
+                div.textContent = `Elemento ${i}`;
+                domArea.appendChild(div);
+            }
+            // Limpiar para no afectar el navegador
+            domArea.innerHTML = '';
+            const end = performance.now();
+            return end - start;
+        }
+
+        // 3. TEST DE MEMORIA: Crear y asignar un array gigante
+        function testMemory() {
+            const start = performance.now();
+            let arr = [];
+            for (let i = 0; i < 1000000; i++) {
+                arr.push({ id: i, data: Math.random() });
+            }
+            const end = performance.now();
+            arr = null; // Liberar referencia
+            return end - start;
+        }
+
+        // Función principal para ejecutar la suite
+        async function runBenchmark() {
+            startBtn.disabled = true;
+
+            // Resetear resultados
+            document.getElementById('cpu-res').textContent = "-";
+            document.getElementById('dom-res').textContent = "-";
+            document.getElementById('mem-res').textContent = "-";
+
+            // Ejecución asíncrona para no congelar la UI por completo
+            try {
+                status.textContent = "Ejecutando CPU...";
+                await new Promise(r => setTimeout(r, 100));
+                const cpuTime = testCPU();
+                document.getElementById('cpu-res').textContent = formatTime(cpuTime);
+
+                status.textContent = "Ejecutando DOM...";
+                await new Promise(r => setTimeout(r, 100));
+                const domTime = testDOM();
+                document.getElementById('dom-res').textContent = formatTime(domTime);
+
+                status.textContent = "Ejecutando Memoria...";
+                await new Promise(r => setTimeout(r, 100));
+                const memTime = testMemory();
+                document.getElementById('mem-res').textContent = formatTime(memTime);
+
+                status.textContent = "¡Prueba completada!";
+            } catch (e) {
+                status.textContent = "Error en la prueba";
+                console.error(e);
+            } finally {
+                startBtn.disabled = false;
+            }
+        }
+
+        startBtn.addEventListener('click', runBenchmark);
+    </script>
+</body>
+</html>

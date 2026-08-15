@@ -1,17 +1,39 @@
+import re
 import os
 import uvicorn
-import requests
-import base64
-import subprocess
 import json
-import asyncio
-import markdown
-import sys
-import pypdf
-import io
 import base64
+import io
+import subprocess
+import sqlite3
+import requests
+import pypdf
+import asyncio
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional, List, Any, Dict, Union
+
+from caveman_utils import CavemanCompressor
+
+def clean_caveman_response(text: str) -> str:
+    """Limpia la respuesta del LLM para asegurar que solo contenga hechos."""
+    # 1. Eliminar bloques de código markdown si el modelo los incluye
+    text = re.sub(r"```(?:json)?\s*(\{[\s\S]*?\}|\[[\s\S]*?\])\s*```", r"\1", text, flags=re.DOTALL)
+    text = re.sub(r"```[\s\S]*?```", "", text, flags=re.DOTALL)
+    
+    # 2. Eliminar prefijos conversacionales comunes
+    prefixes = [
+        "Here is the summary:", "Aquí tienes el resumen:", 
+        "Summary:", "Resumen:", "Caveman:", "Caveman summary:",
+        "Respuesta:", "La respuesta es:", "Result:", "Resultado:"
+    ]
+    for prefix in prefixes:
+        if text.lower().startswith(prefix.lower()):
+            text = text[len(prefix):].strip()
+            
+    # 3. Aplicar limpieza determinística de stopwords como última capa de seguridad
+    text = CavemanCompressor.compress(text)
+    
+    return text.strip()
 from pydantic import BaseModel
 from weasyprint import HTML, CSS
 from weasyprint.text.fonts import FontConfiguration
@@ -160,6 +182,59 @@ def web_search(query):
             return [{"title": r.get('title'), "url": r.get('url'), "body": r.get('content')} for r in results[:5]]
     except Exception as e:
         print(f"[SearxNG Error] {e}")
+    return []
+
+def academic_search(query):
+    # Usando OpenAlex (API libre y abierta de bibliografía científica)
+    try:
+        # 1. Extraer keywords en inglés usando el LLM (esencial para textos largos o índices)
+        prompt_sys = "Eres un extractor de palabras clave para búsquedas académicas."
+        prompt_user = f"Extrae un máximo de 4 palabras clave (traducidas al INGLÉS) que representen el núcleo de este texto. Responde ÚNICAMENTE con las palabras separadas por espacios, sin comillas ni explicaciones:\n\n{query[:2000]}"
+        
+        # Hacemos una llamada rápida al LLM
+        res_llm = engine.llm.chat(prompt_sys, prompt_user)
+        clean_query = res_llm.get("content", "").strip()
+        
+        # Si por alguna razón falla y devuelve un texto largo, hacemos un truncado de seguridad
+        if len(clean_query.split()) > 6:
+            clean_query = " ".join(clean_query.split()[:4])
+            
+        print(f"[OpenAlex] Buscando keywords: '{clean_query}'")
+        
+        # 2. Consultar OpenAlex
+        url = "https://api.openalex.org/works"
+        params = {
+            "search": clean_query,
+            "per-page": 5
+        }
+        response = requests.get(url, params=params, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            results = []
+            for work in data.get('results', []):
+                title = work.get('title', 'Sin título')
+                doi = work.get('doi', '')
+                # Abstract viene invertido en OpenAlex, intentamos reconstruirlo o dejamos vacío
+                ab_inv = work.get('abstract_inverted_index', {})
+                abstract = ""
+                if ab_inv:
+                    words = []
+                    for word, positions in ab_inv.items():
+                        for pos in positions:
+                            words.append((pos, word))
+                    words.sort()
+                    abstract = " ".join([w[1] for w in words])
+                else:
+                    abstract = "Sin abstract disponible."
+                
+                authors = ", ".join([a.get('author', {}).get('display_name', '') for a in work.get('authorships', [])])
+                year = work.get('publication_year', '')
+                
+                body = f"Autores: {authors}. Año: {year}. Resumen: {abstract[:400]}..."
+                results.append({"title": title, "url": doi, "body": body})
+            return results
+    except Exception as e:
+        print(f"[OpenAlex Error] {e}")
     return []
 
 def load_client_history(client_id):
@@ -378,15 +453,27 @@ async def process_query(request: QueryRequest):
             profile = load_profile()
             # Acceso directo a fragmentos raw
             local_context = engine._get_relevant_context(request.query)
-            results = web_search(request.query)
-            web_txt = "\n".join([f"- {r['title']}: {r['body']}" for r in results])
+            results = academic_search(request.query)
+            web_txt = "\n".join([f"- {r['title']}: {r['body']} ({r['url']})" for r in results]) if results else "Sin resultados web académicos."
             
             system_prompt = (
-                "Eres El Investigador de CAMS Mercure. Eres un puente entre el conocimiento local y la inmensidad de la red.\n"
-                "TU OBJETIVO: Contrastar y verificar la información local (Caveman) con el conocimiento externo.\n"
-                "FLEXIBILIDAD CONCEPTUAL: Sé abierto de mente. No descartes conceptos 'new age', esotéricos o alternativos solo porque no tengan una base científica evidente. "
-                "Explóralos, contrástalos y busca sinergias o puntos de fricción sin ponerte a la defensiva.\n"
-                "SALIDA: Resúmenes factuales, citando fuentes locales y web, permitiendo que el usuario decante su propia verdad."
+                "Eres El Investigador de CAMS Mercure. Actúas como un AUDITOR EPISTEMOLÓGICO.\n"
+                "Tu función no es demostrar que algo existe, sino indicar qué evidencia posees, qué falta y qué debe buscarse, maximizando la trazabilidad del conocimiento.\n\n"
+                "NUEVA REGLA OPERATIVA:\n"
+                "Nunca debes concluir 'No existe bibliografía' basándote únicamente en la ausencia de resultados en [WEB].\n"
+                "Si [WEB] está vacío o no contiene resultados relevantes, debes concluir: 'No fue recuperada en esta búsqueda.'\n"
+                "SI detectas términos ampliamente establecidos (ej. Merleau-Ponty, Varela, Gallagher, enacción, embodied cognition, phenomenology, mindfulness, Vipassana, interoception, motor learning) y no encuentras bibliografía en [WEB], NO debes marcar 'sin evidencia'. Debes marcar: 'Área bibliográfica conocida no recuperada por la búsqueda actual.'\n\n"
+                "NUEVA SALIDA OBLIGATORIA (Aplica esta estructura para cada sección analizada):\n"
+                "### Evidencia externa\n"
+                "- [Encontrada | Parcial | No recuperada]\n"
+                "### Evidencia interna CAMS\n"
+                "- [Disponible | Parcial | No disponible]\n"
+                "### Nivel de confianza\n"
+                "- [Alto | Medio | Bajo]\n"
+                "### Acción recomendada\n"
+                "- [Continuar redacción | Solicitar búsqueda OpenAlex | Solicitar búsqueda PubMed | Solicitar revisión humana]\n\n"
+                "FLEXIBILIDAD CONCEPTUAL: Sé abierto de mente. No descartes conceptos 'new age' o alternativos; explóralos y busca puntos de fricción.\n"
+                "REGLA ESTRICTA DE BIBLIOGRAFÍA EXTERNA: Bajo ninguna circunstancia inventes autores, años o DOIs. Si citas un artículo externo, DEBE provenir exactamente de [WEB]."
             ) + thinking_instruction
             
             session_ctx = load_session_memory() if request.session_mode else ""
@@ -749,7 +836,7 @@ def build_caveman_index(folder: str, files: list):
         
         try:
             mtime = os.path.getmtime(fpath)
-            # Intentar recuperar de la caché incremental
+            # Intentar recuperar de la caché incremental (mtime como int en engine.py)
             cached_res = engine.get_cached_caveman(fpath, mtime)
             
             if cached_res and cached_res[1] is not None:
@@ -769,13 +856,16 @@ def build_caveman_index(folder: str, files: list):
                     
                 if len(content.strip()) < 50: continue 
                 
-                prompt = f"REDUCE ESTO A HECHOS PUROS:\n\n{content}"
+                prompt = f"REDUCE ESTO A HECHOS PUROS (PROTOCOLO CAVEMAN):\n\n{content}"
                 res_obj = engine.llm.chat(system_prompt, prompt)
-                res = res_obj.get("content", "")
+                raw_res = res_obj.get("content", "")
+                
+                # LIMPIEZA CRÍTICA: Eliminar ruido y asegurar formato Caveman
+                res = clean_caveman_response(raw_res)
                 
                 # Generar embedding para búsqueda semántica
                 emb = engine.embed_text(res)
-                # Guardar en caché para la próxima vez
+                # Guardar en caché para la próxima vez (mtime como int en engine.py)
                 engine.save_cached_caveman(fpath, mtime, res, embedding=emb)
                 print(f"  └ 🦴 Comprimido: {os.path.basename(fpath)}")
             

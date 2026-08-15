@@ -32,7 +32,7 @@ class LLMClient:
                 {"role": "user", "content": content}
             ],
             "temperature": temperature,
-            "max_tokens": max_tokens if max_tokens else 4096
+            "max_tokens": max_tokens if max_tokens else 8192
         }
         
         headers = {"Content-Type": "application/json"}
